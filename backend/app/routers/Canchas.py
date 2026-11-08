@@ -7,6 +7,7 @@ import re
 from typing import Literal, Optional
 
 from fastapi import APIRouter, HTTPException, Query, status
+from pymongo.errors import OperationFailure
 
 from app.BaseDatos import a_json, db
 from app.Utilidades import (a_object_id, ahora, franja, horario_del_dia, leer_fecha,
@@ -15,6 +16,40 @@ from app.Utilidades import (a_object_id, ahora, franja, horario_del_dia, leer_fe
 router = APIRouter(prefix="/api/canchas", tags=["Busqueda de canchas"])
 
 Superficie = Literal["sintetica", "natural", "cemento", "madera", "arcilla", "acrilico"]
+
+
+INDICE_BUSQUEDA = "busqueda_canchas"
+CAMPOS_TEXTO = ["nombre", "sede.nombre", "sede.zona", "sede.ciudad", "deportes.modalidad"]
+
+
+def _buscar_texto(texto: str):
+    """
+    Busqueda de texto en dos niveles:
+    1. Atlas Search ($search): tolera errores ("golaso"), ignora tildes ("fontibon")
+       y ordena por relevancia. Devuelve los _id que coinciden.
+    2. Respaldo con $regex si el indice no existe o no encuentra nada
+       (por ejemplo, un pedazo de palabra como "gol").
+    Devuelve (ids, motor) para que la respuesta diga cual motor encontro los resultados.
+    """
+    try:
+        encontrados = db.canchas.aggregate([
+            # $search siempre va de PRIMERA etapa del pipeline
+            {"$search": {
+                "index": INDICE_BUSQUEDA,
+                "text": {"query": texto, "path": CAMPOS_TEXTO, "fuzzy": {"maxEdits": 1, "prefixLength": 1}},
+            }},
+            {"$limit": 200},
+            {"$project": {"_id": 1}},
+        ])
+        ids = [d["_id"] for d in encontrados]
+        if ids:
+            return ids, "atlas_search"
+    except OperationFailure:
+        pass  # sin indice de busqueda (por ejemplo, un MongoDB local): se usa el respaldo
+
+    patron = {"$regex": re.escape(texto), "$options": "i"}
+    ids = db.canchas.distinct("_id", {"$or": [{c: patron} for c in CAMPOS_TEXTO]})
+    return ids, "regex"
 
 
 def _ids_sedes_aprobadas():
@@ -59,9 +94,10 @@ def buscar_canchas(
         filtro["techada"] = techada
     if precio_max is not None:
         filtro["precio_hora"] = {"$lte": precio_max}
-    if texto:
-        patron = {"$regex": re.escape(texto.strip()), "$options": "i"}
-        filtro["$or"] = [{"nombre": patron}, {"sede.nombre": patron}, {"sede.zona": patron}]
+    motor = None
+    if texto and texto.strip():
+        ids, motor = _buscar_texto(texto.strip())
+        filtro["_id"] = {"$in": ids}
 
     # Disponibilidad: quitar las canchas que tienen una reserva o bloqueo activo en esa franja
     if fecha and hora is not None:
@@ -69,12 +105,12 @@ def buscar_canchas(
             "estado": "activa",
             "franjas": franja(leer_fecha(fecha), hora),
         })
-        filtro["_id"] = {"$nin": ocupadas}
+        filtro.setdefault("_id", {})["$nin"] = ocupadas
 
     orden_mongo = [("precio_hora", 1), ("nombre", 1)] if orden == "precio" else [("sede.nombre", 1), ("nombre", 1)]
     total = db.canchas.count_documents(filtro)
     canchas = db.canchas.find(filtro).sort(orden_mongo).skip(saltar).limit(limite)
-    return {"total": total, "resultados": a_json(list(canchas))}
+    return {"total": total, "motor_busqueda": motor, "resultados": a_json(list(canchas))}
 
 
 @router.get("/{cancha_id}")

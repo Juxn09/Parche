@@ -352,6 +352,11 @@ export default function Inicio() {
                 <span className="titular cifras mr-1.5 text-3xl">{resultado?.total ?? 0}</span>
                 {resultado?.total === 1 ? "cancha" : "canchas"}
                 {horaElegida !== null && ` libres a las ${nombreHora(horaElegida)}`}
+                {resultado?.motor_busqueda === "atlas_search" && resultado.total > 0 && (
+                  <span className="mt-1 block text-sm text-tinta-suave">
+                    Incluye resultados parecidos a “{filtros.texto}”, aunque tengan tildes o una letra distinta.
+                  </span>
+                )}
               </>
             )}
           </p>
