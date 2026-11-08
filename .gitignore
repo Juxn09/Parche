@@ -1,0 +1,19 @@
+# Secretos: nunca se suben
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Frontend (Node)
+node_modules/
+dist/
+
+# Editor y sistema
+.vscode/
+Thumbs.db
+*.log
