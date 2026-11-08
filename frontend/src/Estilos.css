@@ -1,0 +1,142 @@
+@import "tailwindcss";
+
+/* ---------------------------------------------------------------
+   Sistema de diseno de Parche: "cancha de noche"
+   Sale del mundo real de la cancha sintetica de barrio:
+   grama verde, lineas de cal, petos naranja, malla gris y asfalto.
+   Todos los colores son variables: el modo oscuro solo cambia valores.
+   --------------------------------------------------------------- */
+:root {
+  --fondo: #e7eae4; /* malla */
+  --superficie: #ffffff;
+  --hundido: #dde1da;
+  --tinta: #24272c; /* asfalto */
+  --tinta-suave: #555a61;
+  --tinta-tenue: #7d838a;
+  --linea: rgb(36 39 44 / 0.12);
+  --linea-fuerte: rgb(36 39 44 / 0.26);
+  --acento: #ff6a1f; /* peto */
+  --acento-tinta: #24272c; /* texto sobre el peto (contraste AA) */
+  --grama: #1d5a3c;
+  --grama-profunda: #174a31;
+  --cal: #f4f5ef;
+  --exito: #2b7a4b;
+  --alerta: #9a5a00;
+  --error: #c23a12;
+  color-scheme: light;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --fondo: #191c20;
+    --superficie: #22262b;
+    --hundido: #2b3036;
+    --tinta: #f4f5ef;
+    --tinta-suave: #b3b8bd;
+    --tinta-tenue: #878d94;
+    --linea: rgb(244 245 239 / 0.1);
+    --linea-fuerte: rgb(244 245 239 / 0.22);
+    --grama: #1a5236;
+    --grama-profunda: #143f2a;
+    --exito: #5cc489;
+    --alerta: #f2a93b;
+    --error: #ff7a50;
+    color-scheme: dark;
+  }
+}
+
+@theme inline {
+  --color-fondo: var(--fondo);
+  --color-superficie: var(--superficie);
+  --color-hundido: var(--hundido);
+  --color-tinta: var(--tinta);
+  --color-tinta-suave: var(--tinta-suave);
+  --color-tinta-tenue: var(--tinta-tenue);
+  --color-linea: var(--linea);
+  --color-linea-fuerte: var(--linea-fuerte);
+  --color-acento: var(--acento);
+  --color-acento-tinta: var(--acento-tinta);
+  --color-grama: var(--grama);
+  --color-grama-profunda: var(--grama-profunda);
+  --color-cal: var(--cal);
+  --color-exito: var(--exito);
+  --color-alerta: var(--alerta);
+  --color-error: var(--error);
+
+  /* Una sola familia (Archivo) en dos anchos: condensada para titulares y cifras */
+  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
+
+  --radius-pieza: 6px;
+}
+
+body {
+  font-family: var(--font-sans);
+  background: var(--fondo);
+  color: var(--tinta);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Titulares y cifras: Archivo extra condensada, como los numeros de un peto o un marcador */
+.titular {
+  font-stretch: 62%;
+  font-weight: 850;
+  line-height: 0.92;
+  letter-spacing: -0.005em;
+}
+.condensada {
+  font-stretch: 75%;
+}
+
+/* Cifras alineadas (precios, horas, conteos) */
+.cifras {
+  font-variant-numeric: tabular-nums;
+}
+
+/* La grama sintetica: franjas de corte alternadas, muy sutiles */
+.grama {
+  background-color: var(--grama);
+  background-image: repeating-linear-gradient(
+    90deg,
+    rgb(255 255 255 / 0.035) 0 72px,
+    transparent 72px 144px
+  );
+}
+
+:focus-visible {
+  outline: 2px solid var(--acento);
+  outline-offset: 2px;
+}
+
+/* ---------------------------------------------------------------
+   El unico momento de movimiento: al cargar el inicio se pintan
+   las lineas de cal y despues suben las barras de "esta noche".
+   --------------------------------------------------------------- */
+.pintar > * {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: pintar 1.4s cubic-bezier(0.65, 0, 0.35, 1) forwards;
+}
+@keyframes pintar {
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+.subir {
+  transform-origin: bottom;
+  animation: subir 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes subir {
+  from {
+    transform: scaleY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
