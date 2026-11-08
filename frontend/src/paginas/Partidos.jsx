@@ -4,6 +4,7 @@ import { AlertCircle, Check } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { Link, useLocation } from "react-router";
 import Cupos from "../componentes/Cupos.jsx";
+import Pictograma from "../componentes/Pictograma.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api, pesos } from "../servicios/Api.js";
 import { nombreDia, nombreHora } from "../servicios/Catalogo.js";
@@ -94,7 +95,8 @@ export default function Partidos() {
               const soyOrganizador = usuario && p.usuario_id === usuario._id;
               const yaEstoy = usuario && pa.participantes.some((x) => x.usuario_id === usuario._id);
               return (
-                <li key={p._id} className="grid gap-4 px-4 py-5 sm:grid-cols-[9rem_1fr_auto] sm:items-center sm:px-6">
+                <li key={p._id} className="grid gap-4 px-4 py-5 sm:grid-cols-[auto_9rem_1fr_auto] sm:gap-6 sm:items-center sm:px-6">
+                  <Pictograma deporte={p.deporte} className="hidden w-20 sm:block" />
                   <div>
                     <p className="titular whitespace-nowrap text-3xl first-letter:uppercase">{nombreDia(p.fecha)}</p>
                     <p className="cifras text-sm text-tinta-suave">

@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Navigate } from "react-router";
 import { Aviso, Campo, Insignia, Pestanas, claseBotonPrincipal, claseBotonSecundario, claseEntrada } from "../componentes/Piezas.jsx";
+import MetricasAdmin from "../componentes/MetricasAdmin.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api } from "../servicios/Api.js";
 
@@ -19,7 +20,7 @@ export default function PanelAdmin() {
   return (
     <section className="mx-auto max-w-6xl px-4 py-12 sm:px-6">
       <h1 className="titular text-6xl">Administración</h1>
-      <p className="mt-2 text-tinta-suave">Revisa las sedes nuevas antes de que aparezcan en la búsqueda.</p>
+      <p className="mt-2 text-tinta-suave">Revisa las sedes nuevas antes de que aparezcan en la búsqueda y mide cómo se usa la plataforma.</p>
       <div className="mt-6">
         <Pestanas
           valor={pestana}
@@ -27,10 +28,17 @@ export default function PanelAdmin() {
           opciones={[
             { clave: "sedes", nombre: "Sedes" },
             { clave: "usuarios", nombre: "Usuarios" },
+            { clave: "metricas", nombre: "Métricas" },
           ]}
         />
       </div>
-      {pestana === "sedes" ? <Sedes token={token} /> : <Usuarios token={token} yo={usuario._id} />}
+      {pestana === "sedes" ? (
+        <Sedes token={token} />
+      ) : pestana === "usuarios" ? (
+        <Usuarios token={token} yo={usuario._id} />
+      ) : (
+        <MetricasAdmin token={token} />
+      )}
     </section>
   );
 }

@@ -23,6 +23,7 @@
   --exito: #2b7a4b;
   --alerta: #9a5a00;
   --error: #c23a12;
+  --calor: #1d5a3c; /* extremo oscuro de la escala de ocupacion (graficas) */
   color-scheme: light;
 }
 
@@ -41,6 +42,7 @@
     --exito: #5cc489;
     --alerta: #f2a93b;
     --error: #ff7a50;
+    --calor: #5cc489; /* en oscuro la escala va de la superficie al verde claro */
     color-scheme: dark;
   }
 }
@@ -62,6 +64,7 @@
   --color-exito: var(--exito);
   --color-alerta: var(--alerta);
   --color-error: var(--error);
+  --color-calor: var(--calor);
 
   /* Una sola familia (Archivo) en dos anchos: condensada para titulares y cifras */
   --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
@@ -128,6 +131,21 @@ body {
 @keyframes subir {
   from {
     transform: scaleY(0);
+  }
+}
+
+/* Dibujos de cancha escalados: el trazo no engorda al agrandar el SVG */
+.trazo-fino * {
+  vector-effect: non-scaling-stroke;
+}
+
+/* Reportes: las celdas del mapa se encienden de izquierda a derecha, como reflectores */
+.encender {
+  animation: encender 0.5s ease-out both;
+}
+@keyframes encender {
+  from {
+    opacity: 0;
   }
 }
 

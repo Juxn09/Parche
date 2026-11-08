@@ -4,9 +4,11 @@
 import { AlertCircle, RotateCcw, Search, Sun, Warehouse, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
+import Cupos from "../componentes/Cupos.jsx";
 import LineasCancha from "../componentes/LineasCancha.jsx";
+import Pictograma from "../componentes/Pictograma.jsx";
 import { api, pesos } from "../servicios/Api.js";
-import { SUPERFICIES, fechaLocal, nombreHora, unirConY } from "../servicios/Catalogo.js";
+import { SUPERFICIES, fechaLocal, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
 
 const HORAS_NOCHE = [18, 19, 20, 21, 22];
 const HORAS_FILTRO = Array.from({ length: 17 }, (_, i) => i + 6); // 6 a. m. a 10 p. m.
@@ -30,6 +32,7 @@ export default function Inicio() {
   const [deportes, setDeportes] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
   const [noche, setNoche] = useState(null);
+  const [partidos, setPartidos] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [textoEscrito, setTextoEscrito] = useState("");
   const [resultado, setResultado] = useState(null);
@@ -65,6 +68,13 @@ export default function Inicio() {
       .then(setNoche)
       .catch(() => setNoche([]));
   }, [fechaNoche, esManana, intento]);
+
+  // Partidos abiertos que buscan jugadores (la funcion diferencial de Parche, en la portada)
+  useEffect(() => {
+    api("/api/partidos")
+      .then((lista) => setPartidos(lista.slice(0, 3)))
+      .catch(() => setPartidos([]));
+  }, [intento]);
 
   // 3. El texto espera 300 ms despues de la ultima tecla (no una peticion por letra)
   useEffect(() => {
@@ -194,6 +204,41 @@ export default function Inicio() {
           </div>
         </div>
       </section>
+
+      {/* ---------------- Partidos que buscan jugadores ---------------- */}
+      {partidos.length > 0 && (
+        <section className="border-b border-linea bg-superficie">
+          <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+            <div className="flex flex-wrap items-baseline justify-between gap-3">
+              <h2 className="titular text-4xl">A estos partidos les faltan jugadores</h2>
+              <Link to="/partidos" className="text-sm font-semibold underline underline-offset-4 hover:text-tinta-suave">
+                Ver todos los partidos
+              </Link>
+            </div>
+            <ul className="mt-5 grid gap-6 md:grid-cols-3 md:gap-0 md:divide-x md:divide-linea">
+              {partidos.map((p) => (
+                <li key={p._id} className="md:px-6 md:first:pl-0 md:last:pr-0">
+                  <Link to="/partidos" className="group flex gap-4">
+                    <Pictograma deporte={p.deporte} className="w-20" />
+                    <div className="min-w-0">
+                      <p className="text-sm font-semibold first-letter:uppercase">
+                        {nombreDia(p.fecha)}, {nombreHora(p.hora_inicio)}
+                      </p>
+                      <p className="truncate text-sm text-tinta-suave group-hover:text-tinta">
+                        {p.modalidad} en {p.cancha.sede}
+                      </p>
+                      <div className="mt-2 flex items-center gap-2.5">
+                        <Cupos total={p.partido_abierto.cupos_totales} ocupados={p.partido_abierto.participantes.length + 1} tamano="size-2.5" />
+                        <span className="cifras text-sm font-semibold">{pesos(p.partido_abierto.cuota)}</span>
+                      </div>
+                    </div>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      )}
 
       {/* ---------------- Buscador ---------------- */}
       <section ref={buscadorRef} className="mx-auto max-w-6xl scroll-mt-4 px-4 py-12 sm:px-6">
@@ -399,7 +444,8 @@ function Selector({ etiqueta, valor, onChange, children }) {
 function FilaCancha({ cancha, destino }) {
   return (
     <li className="group relative transition-colors duration-150 hover:bg-hundido/60">
-      <Link to={destino} className="grid grid-cols-[1fr_auto] items-center gap-4 px-4 py-5 sm:px-6">
+      <Link to={destino} className="grid items-center gap-3 px-4 py-5 sm:grid-cols-[auto_1fr_auto] sm:gap-6 sm:px-6">
+      <Pictograma deporte={cancha.deportes[0]?.deporte} className="hidden w-24 sm:block" />
       <span className="absolute inset-y-0 left-0 w-1 bg-acento opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
       <div className="min-w-0">
         <p className="truncate text-sm text-tinta-suave">
@@ -423,10 +469,10 @@ function FilaCancha({ cancha, destino }) {
           <span>{SUPERFICIES[cancha.superficie]}</span>
         </div>
       </div>
-      <div className="text-right">
+      <div className="flex flex-wrap items-baseline gap-x-2 sm:block sm:text-right">
         <p className="titular cifras text-[2rem]">{pesos(cancha.precio_hora)}</p>
         <p className="text-sm text-tinta-suave">la hora</p>
-        <p className="cifras mt-1 text-xs text-tinta-tenue">{pesos(cancha.precio_hora_pico)} de 6 a 10 p. m.</p>
+        <p className="cifras text-xs text-tinta-tenue sm:mt-1">{pesos(cancha.precio_hora_pico)} de 6 a 10 p. m.</p>
       </div>
       </Link>
     </li>

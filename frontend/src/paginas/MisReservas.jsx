@@ -4,6 +4,7 @@ import { AlertCircle } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, Navigate } from "react-router";
 import Cupos from "../componentes/Cupos.jsx";
+import Pictograma, { LineasDeporte } from "../componentes/Pictograma.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api, pesos } from "../servicios/Api.js";
 import { METODOS_PAGO, fechaLocal, horasParaEmpezar, nombreDia, nombreHora } from "../servicios/Catalogo.js";
@@ -97,6 +98,10 @@ export default function MisReservas() {
         </p>
       ))}
 
+      {pestana === "proximas" && grupos.proximas[0] && (
+        <ProximoPartido reserva={grupos.proximas[0]} organizo={grupos.proximas[0].usuario_id === usuario._id} />
+      )}
+
       <div className="mt-6">
         {error ? (
           <p className="flex items-center gap-2 text-error">
@@ -125,7 +130,8 @@ export default function MisReservas() {
               // La interfaz solo orienta: la regla real la aplica la API con la hora del servidor
               const puedeCancelar = !organizo || faltan >= 24;
               return (
-                <li key={r._id} className="grid gap-4 px-4 py-5 sm:grid-cols-[9rem_1fr_auto] sm:px-6">
+                <li key={r._id} className="grid gap-4 px-4 py-5 sm:grid-cols-[auto_9rem_1fr_auto] sm:gap-6 sm:px-6">
+                  <Pictograma deporte={r.deporte} className="hidden w-16 sm:block" />
                   <div>
                     <p className="titular whitespace-nowrap text-3xl first-letter:uppercase">{nombreDia(r.fecha)}</p>
                     <p className="cifras text-sm text-tinta-suave">
@@ -206,6 +212,58 @@ export default function MisReservas() {
       <p className="mt-4 text-sm text-tinta-tenue">
         Cancelar o salir con más de 24 horas de anticipación devuelve el dinero.
       </p>
+    </section>
+  );
+}
+
+// "En 2 días", "en 5 horas", "en 40 minutos": cuánto falta, en palabras
+function cuantoFalta(horas) {
+  if (horas >= 48) return `en ${Math.floor(horas / 24)} días`;
+  if (horas >= 24) {
+    const resto = Math.floor(horas - 24);
+    return resto ? `en 1 día y ${resto} ${resto === 1 ? "hora" : "horas"}` : "en 1 día";
+  }
+  if (horas >= 1) return `en ${Math.floor(horas)} ${Math.floor(horas) === 1 ? "hora" : "horas"}`;
+  if (horas > 0) return `en ${Math.max(1, Math.round(horas * 60))} minutos`;
+  return "ya empezó";
+}
+
+// La reserva más cercana, como la boleta de entrada a la cancha
+function ProximoPartido({ reserva, organizo }) {
+  const pa = reserva.partido_abierto;
+  const faltan = horasParaEmpezar(reserva.fecha, reserva.hora_inicio);
+  const enJuego = faltan <= 0 && horasParaEmpezar(reserva.fecha, reserva.hora_fin) > 0;
+  return (
+    <section className="grama relative mt-6 overflow-hidden rounded-pieza text-cal">
+      <LineasDeporte deporte={reserva.deporte} className="pointer-events-none absolute -right-10 top-1/2 h-[130%] -translate-y-1/2 text-cal/10" />
+      <div className="relative grid gap-6 p-5 sm:grid-cols-[1fr_auto] sm:items-end sm:p-7">
+        <div>
+          <p className="text-sm text-cal/75">
+            {enJuego ? (
+              <span className="inline-flex items-center gap-2">
+                <span className="size-2 animate-pulse rounded-full bg-acento" /> En juego ahora mismo
+              </span>
+            ) : (
+              `Tu próximo partido, ${cuantoFalta(faltan)}`
+            )}
+          </p>
+          <p className="titular mt-2 text-5xl first-letter:uppercase sm:text-6xl">
+            {nombreDia(reserva.fecha)}, {nombreHora(reserva.hora_inicio)}
+          </p>
+          <p className="mt-3 text-cal/85">
+            {reserva.modalidad} en {reserva.cancha.nombre}, {reserva.cancha.sede}, hasta las {nombreHora(reserva.hora_fin)}
+          </p>
+        </div>
+        {pa && (
+          <div className="sm:text-right">
+            <Cupos total={pa.cupos_totales} ocupados={pa.participantes.length + 1} tamano="size-3.5" />
+            <p className="mt-2 text-sm text-cal/80">
+              {pa.participantes.length + 1} de {pa.cupos_totales} jugadores
+              {organizo ? "" : ". Te uniste a este partido"}
+            </p>
+          </div>
+        )}
+      </div>
     </section>
   );
 }

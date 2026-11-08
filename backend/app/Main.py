@@ -13,7 +13,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app import Config
 from app.BaseDatos import a_json, comprobar_conexion, db
-from app.routers import Admin, Auth, Canchas, Partidos, Propietario, Reservas
+from app.routers import Admin, Auth, Canchas, Partidos, Propietario, Reportes, Reservas
 
 
 @asynccontextmanager
@@ -46,6 +46,7 @@ app.include_router(Propietario.router)
 app.include_router(Reservas.router)
 app.include_router(Partidos.router)
 app.include_router(Admin.router)
+app.include_router(Reportes.router)
 
 
 @app.get("/api/salud", tags=["Sistema"])

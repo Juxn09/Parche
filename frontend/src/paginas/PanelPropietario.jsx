@@ -12,6 +12,7 @@ import {
   claseBotonSecundario,
   claseEntrada,
 } from "../componentes/Piezas.jsx";
+import ReportesPropietario from "../componentes/ReportesPropietario.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api, pesos } from "../servicios/Api.js";
 import { METODOS_PAGO, SUPERFICIES, fechaLocal, nombreDia, nombreHora } from "../servicios/Catalogo.js";
@@ -60,6 +61,7 @@ export default function PanelPropietario() {
             { clave: "agenda", nombre: "Agenda del día" },
             { clave: "canchas", nombre: "Mis canchas", conteo: canchas?.length },
             { clave: "sedes", nombre: "Mis sedes", conteo: sedes?.length },
+            { clave: "reportes", nombre: "Reportes" },
           ]}
         />
       </div>
@@ -67,6 +69,8 @@ export default function PanelPropietario() {
       {error && <p className="mt-6 text-error">{error}</p>}
       {!canchas || !sedes ? (
         <div className="mt-8 h-64 animate-pulse rounded-pieza bg-hundido" aria-label="Cargando" />
+      ) : pestana === "reportes" ? (
+        <ReportesPropietario token={token} />
       ) : pestana === "agenda" ? (
         <Agenda canchas={canchas} sedes={sedes} token={token} />
       ) : pestana === "canchas" ? (

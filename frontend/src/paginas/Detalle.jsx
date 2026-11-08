@@ -3,10 +3,10 @@
 import { AlertCircle, ArrowLeft, Check, MapPin, Sun, Users, Warehouse } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router";
-import LineasCancha from "../componentes/LineasCancha.jsx";
+import { LineasDeporte } from "../componentes/Pictograma.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api, pesos } from "../servicios/Api.js";
-import { FOTOS, METODOS_PAGO, SUPERFICIES, fechaLocal, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
+import { METODOS_PAGO, SUPERFICIES, fechaLocal, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
 
 const DIAS_VISIBLES = 8;
 
@@ -53,8 +53,16 @@ export default function Detalle() {
     cargarDisponibilidad();
   }, [cargarDisponibilidad]);
 
+  // Si hoy ya no queda ninguna hora libre (y no llegaron con una fecha elegida), pasar a manana
+  useEffect(() => {
+    if (!disponibilidad || parametros.get("fecha") || fecha !== fechaLocal()) return;
+    if (disponibilidad.horas?.length && !disponibilidad.horas.some((h) => h.estado === "libre")) setFecha(fechaLocal(1));
+  }, [disponibilidad, fecha, parametros]);
+
   // --- Calculos de la seleccion ---
   const horasDelDia = disponibilidad?.horas ?? [];
+  const horasVisibles = horasDelDia.filter((h) => h.estado !== "pasada");
+  const pasadas = horasDelDia.length - horasVisibles.length;
   const horasElegidas = useMemo(() => {
     if (inicio === null) return [];
     return horasDelDia.filter((h) => h.hora >= inicio && h.hora < inicio + duracion);
@@ -139,7 +147,10 @@ export default function Detalle() {
     <>
       {/* ---------------- Cabecera de la cancha ---------------- */}
       <section className="grama relative overflow-hidden text-cal">
-        <LineasCancha className="pointer-events-none absolute inset-0 size-full text-cal/15" />
+        <LineasDeporte
+          deporte={cancha.deportes[0].deporte}
+          className="pointer-events-none absolute -right-24 top-1/2 hidden h-[140%] -translate-y-1/2 text-cal/10 lg:block"
+        />
         <div className="relative mx-auto grid max-w-6xl gap-8 px-4 pb-10 pt-6 sm:px-6 lg:grid-cols-[1fr_22rem] lg:items-end">
           <div>
             <Link to="/" className="inline-flex items-center gap-1.5 text-sm text-cal/80 hover:text-cal">
@@ -168,7 +179,7 @@ export default function Detalle() {
               <p className="mt-4 text-sm text-cal/75">La sede tiene {unirConY(sede.servicios)}.</p>
             )}
           </div>
-          <FotoDeporte deporte={cancha.deportes[0].deporte} />
+          <FichaPrecio cancha={cancha} />
         </div>
       </section>
 
@@ -215,8 +226,16 @@ export default function Detalle() {
             <p className="mt-6 text-tinta-suave">La sede no abre este día.</p>
           ) : (
             <>
-              <div className="mt-6 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {horasDelDia.map((h) => {
+              {pasadas > 0 && horasVisibles.length > 0 && (
+                <p className="mt-5 text-sm text-tinta-suave">
+                  Las horas antes de las {nombreHora(horasVisibles[0].hora)} ya pasaron.
+                </p>
+              )}
+              {horasVisibles.length === 0 && (
+                <p className="mt-6 text-tinta-suave">Por hoy ya no quedan horas. Elige otro día arriba.</p>
+              )}
+              <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
+                {horasVisibles.map((h) => {
                   const elegida = horasElegidas.some((x) => x.hora === h.hora) && inicio !== null;
                   const libre = h.estado === "libre";
                   return (
@@ -398,20 +417,21 @@ function Fila({ etiqueta, children }) {
   );
 }
 
-function FotoDeporte({ deporte }) {
-  const [sinFoto, setSinFoto] = useState(false);
+// Ficha de la cancha: su dibujo (segun el deporte) y lo que cuesta
+function FichaPrecio({ cancha }) {
   return (
-    <div className="relative hidden aspect-[4/3] overflow-hidden rounded-pieza bg-grama-profunda ring-1 ring-cal/15 lg:block">
-      {sinFoto ? (
-        <LineasCancha className="absolute inset-0 size-full text-cal/40" grosor={1.5} />
-      ) : (
-        <img
-          src={`/deportes/${FOTOS[deporte]}`}
-          alt={`Cancha de ${deporte.toLowerCase()}`}
-          onError={() => setSinFoto(true)}
-          className="absolute inset-0 size-full object-cover"
-        />
-      )}
+    <div className="rounded-pieza bg-grama-profunda/85 p-5 ring-1 ring-cal/15">
+      <LineasDeporte deporte={cancha.deportes[0].deporte} className="hidden w-full text-cal/70 sm:block" />
+      <div className="flex items-end justify-between gap-4 sm:mt-5">
+        <div>
+          <p className="titular cifras text-5xl">{pesos(cancha.precio_hora)}</p>
+          <p className="mt-1 text-sm text-cal/75">la hora</p>
+        </div>
+        <div className="text-right">
+          <p className="titular cifras text-2xl">{pesos(cancha.precio_hora_pico)}</p>
+          <p className="mt-1 text-xs text-cal/75">de 6 a 10 p. m.</p>
+        </div>
+      </div>
     </div>
   );
 }
