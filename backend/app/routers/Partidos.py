@@ -52,9 +52,13 @@ def partidos_abiertos(deporte: Optional[str] = None, modalidad: Optional[str] = 
         ]}}},
         {"$project": {"pago": 0, "propietario_id": 0}},
         {"$sort": {"fecha": 1, "hora_inicio": 1}},
-        {"$limit": 50},
+        {"$limit": 200},
     ]
-    return a_json(list(db.reservas.aggregate(pipeline)))
+    # Solo los que todavia admiten jugadores: faltan al menos 2 horas para empezar
+    limite = ahora() + timedelta(hours=HORAS_LIMITE_UNIRSE)
+    vigentes = [p for p in db.reservas.aggregate(pipeline)
+                if momento(leer_fecha(p["fecha"]), p["hora_inicio"]) >= limite]
+    return a_json(vigentes[:50])
 
 
 @router.post("/{reserva_id}/unirse")
