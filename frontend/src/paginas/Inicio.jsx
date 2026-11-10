@@ -183,7 +183,7 @@ export default function Inicio() {
                   onClick={() => verHora(n.hora)}
                   aria-pressed={horaElegida === n.hora}
                   aria-label={
-                    n.pasada ? `${nombreHora(n.hora)}, ya pasó` : `${nombreHora(n.hora)}, ${n.libres} canchas libres`
+                    n.pasada ? `${nombreHora(n.hora)}, ya pasó` : `${nombreHora(n.hora)}, ${n.libres} ${n.libres === 1 ? "cancha libre" : "canchas libres"}`
                   }
                   className={`group flex flex-col items-center rounded-[4px] px-1 pb-2 pt-1 transition-colors duration-150 ${
                     horaElegida === n.hora ? "bg-cal/15 ring-1 ring-cal/60" : "hover:bg-cal/10"
@@ -217,7 +217,7 @@ export default function Inicio() {
                 onClick={() => verHora(mejorHora.hora)}
                 className="mt-5 inline-flex h-11 w-full items-center justify-center rounded-pieza bg-acento px-4 font-semibold text-acento-tinta transition-[filter] duration-150 hover:brightness-110"
               >
-                Ver las {mejorHora.libres} canchas libres a las {nombreHora(mejorHora.hora)}
+                {mejorHora.libres === 1 ? "Ver la cancha libre" : `Ver las ${mejorHora.libres} canchas libres`} a las {nombreHora(mejorHora.hora)}
               </button>
             )}
             {!errorNoche && noche && !mejorHora && (
