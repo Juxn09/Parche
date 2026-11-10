@@ -23,6 +23,12 @@ solo_cliente = requiere_rol("cliente")
 HORAS_LIMITE_UNIRSE = 2
 HORAS_REEMBOLSO_AL_SALIR = 24
 
+# Por que un partido ya no admite cambios (se revisa ANTES que la hora, para dar el motivo real)
+PARTIDO_NO_ACTIVO = {
+    "finalizada": "Este partido ya se jugó",
+    "cancelada": "El organizador canceló este partido",
+}
+
 
 @router.get("")
 def partidos_abiertos(deporte: Optional[str] = None, modalidad: Optional[str] = None,
@@ -67,6 +73,8 @@ def unirse(reserva_id: str, usuario: dict = Depends(solo_cliente)):
     partido = db.reservas.find_one({"_id": rid, "tipo": "reserva", "partido_abierto": {"$exists": True}})
     if partido is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Partido no encontrado")
+    if partido["estado"] in PARTIDO_NO_ACTIVO:
+        raise HTTPException(status.HTTP_409_CONFLICT, PARTIDO_NO_ACTIVO[partido["estado"]])
 
     # Hora limite: hasta 2 horas antes del partido (hora del servidor)
     inicio = momento(leer_fecha(partido["fecha"]), partido["hora_inicio"])
@@ -122,10 +130,11 @@ def unirse(reserva_id: str, usuario: dict = Depends(solo_cliente)):
 def salir(reserva_id: str, usuario: dict = Depends(solo_cliente)):
     """Salirse con mas de 24 h devuelve la cuota; con menos, no."""
     rid = a_object_id(reserva_id)
-    partido = db.reservas.find_one({"_id": rid, "estado": "activa",
-                                    "partido_abierto.participantes.usuario_id": usuario["_id"]})
+    partido = db.reservas.find_one({"_id": rid, "partido_abierto.participantes.usuario_id": usuario["_id"]})
     if partido is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No estás en este partido")
+    if partido["estado"] in PARTIDO_NO_ACTIVO:
+        raise HTTPException(status.HTTP_409_CONFLICT, f"{PARTIDO_NO_ACTIVO[partido['estado']]}: ya no puedes salirte")
 
     inicio = momento(leer_fecha(partido["fecha"]), partido["hora_inicio"])
     if inicio <= ahora():
@@ -133,7 +142,7 @@ def salir(reserva_id: str, usuario: dict = Depends(solo_cliente)):
     reembolso = inicio - ahora() >= timedelta(hours=HORAS_REEMBOLSO_AL_SALIR)
 
     db.reservas.update_one(
-        {"_id": rid},
+        {"_id": rid, "estado": "activa"},  # si justo dejo de estar activa, no se toca
         {"$pull": {"partido_abierto.participantes": {"usuario_id": usuario["_id"]}},
          "$set": {"partido_abierto.estado": "abierto"}},  # si estaba completo, vuelve a tener cupo
     )

@@ -63,6 +63,13 @@ def _validar_horas(sede: dict, fecha: str, hora_inicio: int, horas: int) -> list
     return list(range(hora_inicio, hora_inicio + horas))
 
 
+# Mensaje claro segun por que una reserva ya no se puede tocar
+NO_ACTIVA = {
+    "finalizada": "Esta reserva ya se jugó: no se puede cancelar",
+    "cancelada": "Esta reserva ya fue cancelada",
+}
+
+
 def _horario_ocupado():
     return HTTPException(status.HTTP_409_CONFLICT, "Ese horario ya está ocupado en esta cancha")
 
@@ -154,7 +161,7 @@ def cancelar_reserva(reserva_id: str, usuario: dict = Depends(solo_cliente)):
     if reserva is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Reserva no encontrada")
     if reserva["estado"] != "activa":
-        raise HTTPException(status.HTTP_409_CONFLICT, "Esta reserva ya no está activa")
+        raise HTTPException(status.HTTP_409_CONFLICT, NO_ACTIVA.get(reserva["estado"], "Esta reserva ya no está activa"))
 
     inicio = momento(leer_fecha(reserva["fecha"]), reserva["hora_inicio"])
     if inicio - ahora() < timedelta(hours=HORAS_MINIMAS_CANCELAR):

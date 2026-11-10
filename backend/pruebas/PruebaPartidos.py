@@ -72,3 +72,44 @@ def prueba_modalidad_de_menos_de_4_no_abre_partido(cliente_http, datos):
                           {"$push": {"deportes": {"deporte": "Pádel", "modalidad": "Pádel individual"}}})
     r = cliente_http.post("/api/reservas", json=cuerpo, headers=token(datos["jugadores"][0]))
     assert r.status_code == 400 and "al menos 4" in r.json()["detail"]
+
+
+def prueba_partido_finalizado_rechaza_unirse_salir_y_cancelar_con_mensaje_claro(cliente_http, datos, monkeypatch):
+    """Despues de jugarse y pasar a 'finalizada', ninguna accion lo modifica y el motivo es claro."""
+    from datetime import timedelta
+
+    import app.CicloDeVida as CicloDeVida
+    from app.CicloDeVida import finalizar_reservas_pasadas
+    from conftest import AHORA
+
+    partido = _abrir_partido(cliente_http, datos)
+    j = datos["jugadores"]
+    cliente_http.post(f"/api/partidos/{partido['_id']}/unirse", headers=token(j[1]))
+    # El reloj avanza al dia siguiente del partido y se finaliza
+    despues = AHORA + timedelta(days=3)
+    monkeypatch.setattr(CicloDeVida, "ahora", lambda: despues)
+    assert finalizar_reservas_pasadas(db) == 1
+    assert db.reservas.find_one({"tipo": "reserva"})["estado"] == "finalizada"
+
+    r = cliente_http.post(f"/api/partidos/{partido['_id']}/unirse", headers=token(j[2]))
+    assert r.status_code == 409 and r.json()["detail"] == "Este partido ya se jugó"
+    r = cliente_http.post(f"/api/partidos/{partido['_id']}/salir", headers=token(j[1]))
+    assert r.status_code == 409 and r.json()["detail"] == "Este partido ya se jugó: ya no puedes salirte"
+    r = cliente_http.post(f"/api/reservas/{partido['_id']}/cancelar", headers=token(j[0]))
+    assert r.status_code == 409 and r.json()["detail"] == "Esta reserva ya se jugó: no se puede cancelar"
+    # Sigue apareciendo en Mis reservas, con su estado, para que la interfaz la muestre en "Jugadas"
+    mias = cliente_http.get("/api/reservas/mias", headers=token(j[0])).json()
+    assert [m["estado"] for m in mias] == ["finalizada"]
+    # Y el participante tambien la ve
+    assert [m["estado"] for m in cliente_http.get("/api/reservas/mias", headers=token(j[1])).json()] == ["finalizada"]
+
+
+def prueba_partido_cancelado_explica_el_motivo(cliente_http, datos):
+    partido = _abrir_partido(cliente_http, datos)
+    j = datos["jugadores"]
+    cliente_http.post(f"/api/partidos/{partido['_id']}/unirse", headers=token(j[1]))
+    assert cliente_http.post(f"/api/reservas/{partido['_id']}/cancelar", headers=token(j[0])).status_code == 200
+    r = cliente_http.post(f"/api/partidos/{partido['_id']}/unirse", headers=token(j[2]))
+    assert r.status_code == 409 and r.json()["detail"] == "El organizador canceló este partido"
+    r = cliente_http.post(f"/api/reservas/{partido['_id']}/cancelar", headers=token(j[0]))
+    assert r.status_code == 409 and r.json()["detail"] == "Esta reserva ya fue cancelada"
