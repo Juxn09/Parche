@@ -17,7 +17,8 @@ export default function App() {
   return (
     <div className="min-h-dvh bg-fondo text-tinta">
       <Encabezado />
-      <main>
+      {/* En celular, espacio para la barra de navegación fija de abajo */}
+      <main className="pb-[calc(4rem+env(safe-area-inset-bottom))] sm:pb-0">
         {/* key: al cambiar de pagina, el aviso de error se reinicia */}
         <ErrorPantalla key={ubicacion.pathname}>
         <Routes>
