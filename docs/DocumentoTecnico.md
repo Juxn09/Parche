@@ -226,7 +226,7 @@ Todos se crean con scripts reproducibles: `backend/scripts/CrearColecciones.py` 
 
 Cada colección tiene un validador con `validationLevel: "strict"` y `validationAction: "error"`. Por ejemplo, `usuarios.rol` solo admite `cliente`, `propietario` o `admin`, el `email` debe tener formato de correo, y `reservas.franjas` debe seguir el patrón `AAAA-MM-DDTHH`. Si alguien intenta insertar un documento inválido, **MongoDB lo rechaza** aunque no pase por la API.
 
-`[[EVIDENCIA: captura de Compass rechazando un documento inválido — ya existe en la bóveda: "F2 - Validacion rechaza documento.png"]]`
+La evidencia está en la sección 10 (E2): Compass conectado a Atlas rechaza un usuario con un rol inventado.
 
 ## 6. Conexión entre el backend y la base de datos
 
@@ -380,10 +380,11 @@ Todos los reportes se calculan con **Aggregation Pipeline** dentro de MongoDB (`
 
 **Búsqueda de texto (Atlas Search).** `GET /api/canchas?texto=` usa `$search` con `fuzzy` (tolera una letra de error) sobre nombre, sede, zona, ciudad y modalidad. Si no encuentra nada, cae a un `$regex` escapado. La respuesta indica qué motor respondió (`motor_busqueda`). Por ejemplo, "golaso" encuentra "El Golazo" y "padel" encuentra "Pádel".
 
-`[[EVIDENCIA: dashboard del propietario — mapa de calor "Tus horas pico"]]`
-`[[EVIDENCIA: métricas del admin]]`
-`[[EVIDENCIA: búsqueda "golaso" con resultados]]`
-`[[EVIDENCIA: un pipeline ejecutado en mongosh / Compass]]`
+Evidencias en la sección 10: mapa de calor del propietario (E8b), métricas del administrador (E9b) y búsqueda "golaso" (E12, abajo).
+
+![E12. "golaso" encuentra las canchas de El Golazo con Atlas Search](evidencias/E12-BusquedaGolaso.jpg)
+
+`[[CAPTURA: un pipeline ejecutado en mongosh / Compass]]`
 
 ## 10. Evidencias
 
@@ -402,6 +403,7 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E9 | Panel del admin: aprobación de sede y métricas | [E9a](evidencias/E9a-PanelAdminSedes.jpg) · [E9b](evidencias/E9b-PanelAdminMetricas.jpg) |
 | E10 | API desplegada en Render (`/api/salud`) | [Imagen E10](evidencias/E10-RenderSalud.png) · panel de Render pendiente |
 | E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · panel de Vercel pendiente |
+| E12 | Búsqueda "golaso" con Atlas Search en la app publicada | [Imagen E12](evidencias/E12-BusquedaGolaso.jpg) (sección 9) |
 
 **E1 y E3. Colecciones e índices en Atlas** (consulta de solo lectura con PyMongo):
 
