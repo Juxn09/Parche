@@ -13,10 +13,14 @@ export function enlacesSegunRol(usuario) {
     { a: "/", nombre: "Buscar canchas", corto: "Buscar", icono: Search, exacto: true },
     { a: "/partidos", nombre: "Partidos abiertos", corto: "Partidos", icono: Users },
   ];
-  if (usuario?.rol === "cliente") enlaces.push({ a: "/mis-reservas", nombre: "Mis reservas", corto: "Mis reservas", icono: CalendarCheck });
-  if (usuario?.rol === "propietario") enlaces.push({ a: "/panel", nombre: "Mi panel", corto: "Mi panel", icono: LayoutDashboard });
-  if (usuario?.rol === "admin") enlaces.push({ a: "/admin", nombre: "Administración", corto: "Admin", icono: ShieldCheck });
-  if (!usuario) enlaces.push({ a: "/ingresar", nombre: "Ingresar", corto: "Ingresar", icono: LogIn, soloCelular: true });
+  if (usuario?.rol === "cliente")
+    enlaces.push({ a: "/mis-reservas", nombre: "Mis reservas", corto: "Mis reservas", icono: CalendarCheck });
+  if (usuario?.rol === "propietario")
+    enlaces.push({ a: "/panel", nombre: "Mi panel", corto: "Mi panel", icono: LayoutDashboard });
+  if (usuario?.rol === "admin")
+    enlaces.push({ a: "/admin", nombre: "Administración", corto: "Admin", icono: ShieldCheck });
+  if (!usuario)
+    enlaces.push({ a: "/ingresar", nombre: "Ingresar", corto: "Ingresar", icono: LogIn, soloCelular: true });
   return enlaces;
 }
 
@@ -36,108 +40,114 @@ export default function Encabezado() {
   const enlaces = enlacesSegunRol(usuario);
 
   return (
-    <>
-      <header className="border-b border-linea bg-fondo">
-        <div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
-          <Link to="/" aria-label="Parche, inicio">
-            <Marca className="text-[2.1rem]" />
-          </Link>
+    <header className="border-b border-linea bg-fondo">
+      <div className="mx-auto flex h-16 max-w-6xl items-center gap-8 px-4 sm:px-6">
+        <Link to="/" aria-label="Parche, inicio">
+          <Marca className="text-[2.1rem]" />
+        </Link>
 
-          {/* Arriba: desde 640 px */}
-          <nav aria-label="Principal" className="hidden h-full items-stretch gap-6 sm:flex">
-            {enlaces
-              .filter((e) => !e.soloCelular)
-              .map((e) => (
-                <NavLink
-                  key={e.a}
-                  to={e.a}
-                  end={e.exacto}
-                  className={({ isActive }) =>
-                    `relative flex items-center text-[15px] transition-colors duration-150 ${
-                      isActive ? "font-semibold text-tinta" : "text-tinta-suave hover:text-tinta"
-                    }`
-                  }
-                >
-                  {({ isActive }) => (
-                    <>
-                      {e.nombre}
-                      <span
-                        aria-hidden="true"
-                        className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-tiza transition-transform duration-300 ease-cancha ${
-                          isActive ? "scale-x-100" : "scale-x-0"
-                        }`}
-                      />
-                    </>
-                  )}
-                </NavLink>
-              ))}
-          </nav>
-
-          <div className="ml-auto flex items-center gap-4">
-            {usuario ? (
-              <>
-                <p className="hidden text-right text-sm leading-tight sm:block">
-                  {usuario.nombre}
-                  <span className="block text-xs text-tinta-tenue">{NOMBRE_ROL[usuario.rol]}</span>
-                </p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    salir();
-                    navegar("/");
-                  }}
-                  className="inline-flex h-9 items-center gap-2 rounded-pieza border border-linea-fuerte px-3 text-sm text-tinta-suave transition-colors duration-150 hover:border-tinta hover:text-tinta"
-                >
-                  <LogOut className="size-4" strokeWidth={1.75} aria-hidden="true" />
-                  Salir
-                </button>
-              </>
-            ) : (
-              <Link
-                to="/ingresar"
-                className="hidden h-9 items-center rounded-pieza bg-tinta px-4 text-sm font-semibold text-fondo transition-opacity duration-150 hover:opacity-85 sm:inline-flex"
-              >
-                Ingresar
-              </Link>
-            )}
-          </div>
-        </div>
-      </header>
-
-      {/* Abajo: solo en celular (menos de 640 px). Fija, con el área segura del iPhone. */}
-      <nav
-        aria-label="Principal"
-        className="fixed inset-x-0 bottom-0 z-40 border-t border-linea bg-fondo/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
-      >
-        <ul className="mx-auto flex max-w-md">
-          {enlaces.map((e) => (
-            <li key={e.a} className="flex-1">
+        {/* Arriba: desde 640 px */}
+        <nav aria-label="Principal" className="hidden h-full items-stretch gap-6 sm:flex">
+          {enlaces
+            .filter((e) => !e.soloCelular)
+            .map((e) => (
               <NavLink
+                key={e.a}
                 to={e.a}
                 end={e.exacto}
                 className={({ isActive }) =>
-                  `relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] transition-colors duration-150 ${
-                    isActive ? "font-semibold text-tinta" : "text-tinta-suave"
+                  `relative flex items-center text-[15px] transition-colors duration-150 ${
+                    isActive ? "font-semibold text-tinta" : "text-tinta-suave hover:text-tinta"
                   }`
                 }
               >
                 {({ isActive }) => (
                   <>
+                    {e.nombre}
                     <span
                       aria-hidden="true"
-                      className={`absolute inset-x-6 top-0 h-[3px] rounded-full bg-tiza transition-transform duration-300 ease-cancha ${
+                      className={`absolute inset-x-0 -bottom-px h-[3px] rounded-full bg-tiza transition-transform duration-300 ease-cancha ${
                         isActive ? "scale-x-100" : "scale-x-0"
                       }`}
                     />
-                    <e.icono className="size-5" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden="true" />
-                    {e.corto}
                   </>
                 )}
               </NavLink>
-            </li>
-          ))}
-        </ul>
-      </nav>
-    </>
+            ))}
+        </nav>
+
+        <div className="ml-auto flex items-center gap-4">
+          {usuario ? (
+            <>
+              <p className="hidden text-right text-sm leading-tight sm:block">
+                {usuario.nombre}
+                <span className="block text-xs text-tinta-tenue">{NOMBRE_ROL[usuario.rol]}</span>
+              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  salir();
+                  navegar("/");
+                }}
+                className="inline-flex h-11 min-w-11 items-center gap-2 rounded-pieza border border-linea-fuerte px-3.5 text-sm text-tinta-suave transition-colors duration-150 hover:border-tinta hover:text-tinta sm:h-9 sm:px-3"
+              >
+                <LogOut className="size-4" strokeWidth={1.75} aria-hidden="true" />
+                Salir
+              </button>
+            </>
+          ) : (
+            <Link
+              to="/ingresar"
+              className="hidden h-9 items-center rounded-pieza bg-tinta px-4 text-sm font-semibold text-fondo transition-opacity duration-150 hover:opacity-85 sm:inline-flex"
+            >
+              Ingresar
+            </Link>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}
+
+// Abajo: solo en celular (menos de 640 px). Fija, con el área segura del iPhone.
+// App.jsx la pone DESPUÉS del contenido en el HTML: así el orden del Tab coincide
+// con lo que se ve (primero la página, al final la barra de abajo).
+export function BarraInferior() {
+  const { usuario } = useSesion();
+  const enlaces = enlacesSegunRol(usuario);
+  return (
+    <nav
+      aria-label="Principal"
+      className="fixed inset-x-0 bottom-0 z-40 border-t border-linea bg-fondo/95 pb-[env(safe-area-inset-bottom)] backdrop-blur sm:hidden"
+    >
+      <ul className="mx-auto flex max-w-md">
+        {enlaces.map((e) => (
+          <li key={e.a} className="flex-1">
+            <NavLink
+              to={e.a}
+              end={e.exacto}
+              className={({ isActive }) =>
+                `relative flex h-16 flex-col items-center justify-center gap-1 text-[11px] transition-colors duration-150 ${
+                  isActive ? "font-semibold text-tinta" : "text-tinta-suave"
+                }`
+              }
+            >
+              {({ isActive }) => (
+                <>
+                  <span
+                    aria-hidden="true"
+                    className={`absolute inset-x-6 top-0 h-[3px] rounded-full bg-tiza transition-transform duration-300 ease-cancha ${
+                      isActive ? "scale-x-100" : "scale-x-0"
+                    }`}
+                  />
+                  <e.icono className="size-5" strokeWidth={isActive ? 2.25 : 1.75} aria-hidden="true" />
+                  {e.corto}
+                </>
+              )}
+            </NavLink>
+          </li>
+        ))}
+      </ul>
+    </nav>
   );
 }
