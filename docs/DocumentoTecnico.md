@@ -290,6 +290,10 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 
 **¿Cómo sabemos que las pruebas sirven?** Se hizo una prueba de mutación: se quitó temporalmente la unicidad del índice `ux_cancha_franja_activa` y fallaron las 3 pruebas de cruce. Al restaurarlo, volvieron a pasar.
 
+**Lo que las pruebas NO cubren.**
+- **Atlas Search**: `$search` solo existe en Atlas, y el MongoDB temporal no lo tiene. Allí `$search` falla y la API usa el **respaldo con `$regex`**, así que las pruebas solo cubren ese respaldo. La búsqueda tolerante a errores ("golaso" → "El Golazo", "padel" → "Pádel") se verificó a mano contra Atlas, en local y en Render (sección 9).
+- **Las pantallas**: se verifican a mano en el navegador.
+
 **¿Por qué no `mongomock`?** Porque no aplica el índice único sobre arreglos (*multikey*): aceptaría una reserva de 8 a 9 encima de otra de 7 a 9.
 
 ## 9. Consultas y reportes
