@@ -4,6 +4,7 @@ import { AlertCircle, ArrowLeft, Check, MapPin, Sun, Users, Warehouse } from "lu
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useLocation, useParams, useSearchParams } from "react-router";
 import { LineasDeporte } from "../componentes/Pictograma.jsx";
+import Regleta, { LeyendaRegleta } from "../componentes/Regleta.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api, pesos } from "../servicios/Api.js";
 import { METODOS_PAGO, SUPERFICIES, fechaLocal, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
@@ -58,6 +59,14 @@ export default function Detalle() {
     if (!disponibilidad || parametros.get("fecha") || fecha !== fechaLocal()) return;
     if (disponibilidad.horas?.length && !disponibilidad.horas.some((h) => h.estado === "libre")) setFecha(fechaLocal(1));
   }, [disponibilidad, fecha, parametros]);
+
+  // Si la hora que venia en la URL (o la elegida) ya no esta libre, se quita la seleccion:
+  // antes se veia en naranja una hora "Ocupada".
+  useEffect(() => {
+    if (inicio === null || !disponibilidad) return;
+    const h = disponibilidad.horas?.find((x) => x.hora === inicio);
+    if (!h || h.estado !== "libre") setInicio(null);
+  }, [disponibilidad, inicio]);
 
   // --- Calculos de la seleccion ---
   const horasDelDia = useMemo(() => disponibilidad?.horas ?? [], [disponibilidad]);
@@ -184,7 +193,7 @@ export default function Detalle() {
       </section>
 
       {/* ---------------- Horas y reserva ---------------- */}
-      <section className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[1fr_22rem]">
+      <section className="mx-auto grid max-w-6xl grid-cols-[minmax(0,1fr)] gap-8 px-4 py-10 sm:px-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
         <div>
           <h2 className="titular text-4xl">Elige día y hora</h2>
 
@@ -234,48 +243,18 @@ export default function Detalle() {
               {horasVisibles.length === 0 && (
                 <p className="mt-6 text-tinta-suave">Por hoy ya no quedan horas. Elige otro día arriba.</p>
               )}
-              <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-6">
-                {horasVisibles.map((h) => {
-                  const elegida = horasElegidas.some((x) => x.hora === h.hora) && inicio !== null;
-                  const libre = h.estado === "libre";
-                  return (
-                    <button
-                      key={h.hora}
-                      type="button"
-                      disabled={!libre}
-                      onClick={() => {
-                        setInicio(h.hora);
-                        setConfirmada(null);
-                        setErrorReserva(null);
-                      }}
-                      aria-pressed={elegida}
-                      className={`relative flex h-16 flex-col items-start justify-center rounded-pieza border px-3 text-left transition-colors duration-150 ${
-                        elegida
-                          ? "border-acento bg-acento text-acento-tinta"
-                          : libre
-                            ? "border-linea-fuerte bg-superficie hover:border-tinta"
-                            : h.estado === "ocupada"
-                              ? "cursor-not-allowed border-transparent bg-[repeating-linear-gradient(135deg,var(--hundido)_0_6px,transparent_6px_12px)] text-tinta-tenue"
-                              : "cursor-not-allowed border-transparent text-tinta-tenue opacity-50"
-                      }`}
-                    >
-                      <span className="font-semibold">{nombreHora(h.hora)}</span>
-                      <span className="cifras text-xs">
-                        {libre ? pesos(h.precio) : h.estado === "ocupada" ? "Ocupada" : "Ya pasó"}
-                      </span>
-                      {libre && h.hora >= 18 && h.hora <= 21 && !elegida && (
-                        <span className="absolute right-2 top-2 size-1.5 rounded-full bg-acento" title="Hora pico" />
-                      )}
-                    </button>
-                  );
-                })}
+              <div className="mt-4">
+                <Regleta
+                  horas={horasVisibles}
+                  elegidas={inicio !== null ? horasElegidas : []}
+                  onElegir={(hora) => {
+                    setInicio(hora);
+                    setConfirmada(null);
+                    setErrorReserva(null);
+                  }}
+                />
               </div>
-              <p className="mt-3 flex flex-wrap gap-x-5 gap-y-1 text-xs text-tinta-suave">
-                <span className="inline-flex items-center gap-1.5">
-                  <span className="size-1.5 rounded-full bg-acento" /> Hora pico, de 6 a 10 p. m.
-                </span>
-                <span>Las horas rayadas ya están reservadas.</span>
-              </p>
+              <LeyendaRegleta />
             </>
           )}
         </div>

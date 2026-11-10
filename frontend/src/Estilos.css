@@ -43,6 +43,11 @@
   --tiza-suave: rgb(29 90 60 / 0.32);
   --foco: #24272c; /* anillo del teclado: asfalto en claro */
   --sombra-panel: 0 1px 0 rgb(36 39 44 / 0.06), 0 10px 28px -18px rgb(36 39 44 / 0.35);
+  /* Hora ocupada: en claro, gris con rayas oscuras (la tiza del claro es verde: una "grama rayada"
+     se confundiria con lo libre). En oscuro, grama con rayas de cal. */
+  --ocupada-fondo: #dde1da;
+  --ocupada-raya: rgb(36 39 44 / 0.16);
+  --ocupada-tinta: #3f444a;
   color-scheme: light;
 }
 
@@ -66,6 +71,9 @@
     --tiza-suave: rgb(244 245 239 / 0.3);
     --foco: #f4f5ef;
     --sombra-panel: 0 1px 0 rgb(0 0 0 / 0.25), 0 12px 30px -18px rgb(0 0 0 / 0.7);
+    --ocupada-fondo: #1a5236;
+    --ocupada-raya: rgb(244 245 239 / 0.14);
+    --ocupada-tinta: #f4f5ef;
     color-scheme: dark;
   }
 }
@@ -159,6 +167,20 @@ body {
   background-image: repeating-linear-gradient(90deg, var(--tiza) 0 6px, transparent 6px 10px);
   background-size: 100% 3px;
   background-repeat: no-repeat;
+}
+
+/* Regleta: hora pico sobre un azulejo de tiza (linea punteada del color del fondo, para que se vea) */
+.borde-pico-sobre-tiza {
+  background-image: repeating-linear-gradient(90deg, var(--fondo) 0 6px, transparent 6px 10px);
+  background-size: 100% 3px;
+  background-repeat: no-repeat;
+}
+
+/* Regleta: hora ocupada (rayado + texto "Ocupada"; colores por modo arriba) */
+.patron-ocupada {
+  background-color: var(--ocupada-fondo);
+  background-image: repeating-linear-gradient(135deg, var(--ocupada-raya) 0 6px, transparent 6px 12px);
+  color: var(--ocupada-tinta);
 }
 
 /* Patron de ocupado: rayado gris (la franja ya tiene dueno) */

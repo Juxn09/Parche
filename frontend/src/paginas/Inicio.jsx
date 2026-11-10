@@ -283,39 +283,52 @@ export default function Inicio() {
               </div>
             ) : (
             <div className="mt-5 grid grid-cols-5 gap-2 sm:gap-3">
-              {(noche ?? HORAS_NOCHE.map((h) => ({ hora: h, cargando: true }))).map((n, i) => (
-                <button
-                  key={n.hora}
-                  type="button"
-                  disabled={n.cargando || n.pasada}
-                  onClick={() => verHora(n.hora)}
-                  aria-pressed={horaElegida === n.hora}
-                  aria-label={
-                    n.pasada ? `${nombreHora(n.hora)}, ya pasó` : `${nombreHora(n.hora)}, ${n.libres} ${n.libres === 1 ? "cancha libre" : "canchas libres"}`
-                  }
-                  className={`group flex flex-col items-center rounded-[4px] px-1 pb-2 pt-1 transition-colors duration-150 ${
-                    horaElegida === n.hora ? "bg-cal/15 ring-1 ring-cal/60" : "hover:bg-cal/10"
-                  } ${n.pasada ? "opacity-40" : ""}`}
-                >
-                  <span className="titular cifras text-[clamp(2rem,5vw,2.9rem)]">
-                    {n.cargando ? "·" : n.pasada ? "–" : n.libres}
-                  </span>
-                  <span className="relative mt-2 h-24 w-full overflow-hidden rounded-[3px] bg-cal/10">
-                    {!n.cargando && !n.pasada && (
-                      <span
-                        className={`subir absolute inset-x-0 bottom-0 ${
-                          n.hora === mejorHora?.hora ? "bg-acento" : "bg-cal/80"
-                        }`}
-                        style={{
-                          height: `${Math.max(4, (n.libres / Math.max(catalogo.length, 1)) * 100)}%`,
-                          animationDelay: `${1100 + i * 90}ms`,
-                        }}
-                      />
-                    )}
-                  </span>
-                  <span className="mt-2 whitespace-nowrap text-xs font-medium sm:text-sm">{nombreHora(n.hora)}</span>
-                </button>
-              ))}
+              {(noche ?? HORAS_NOCHE.map((h) => ({ hora: h, cargando: true }))).map((n, i) => {
+                const elegida = horaElegida === n.hora;
+                const mejor = !elegida && n.hora === mejorHora?.hora;
+                const sinCanchas = !n.cargando && !n.pasada && n.libres === 0;
+                return (
+                  <button
+                    key={n.hora}
+                    type="button"
+                    disabled={n.cargando || n.pasada || sinCanchas}
+                    onClick={() => verHora(n.hora)}
+                    aria-pressed={elegida}
+                    aria-label={
+                      n.pasada
+                        ? `${nombreHora(n.hora)}, ya pasó`
+                        : `${nombreHora(n.hora)}, ${n.libres} ${n.libres === 1 ? "cancha libre" : "canchas libres"}${mejor ? ", la hora con más canchas libres" : ""}`
+                    }
+                    className={`group flex flex-col items-center rounded-[4px] px-1 pb-2 pt-1 transition-colors duration-150 ${
+                      elegida ? "bg-cal/15 ring-2 ring-acento" : "hover:bg-cal/10"
+                    } ${n.pasada ? "opacity-50" : ""}`}
+                  >
+                    <span className="titular cifras text-[clamp(2rem,5vw,2.9rem)]">
+                      {n.cargando ? "·" : n.pasada ? "–" : n.libres}
+                    </span>
+                    {/* La barra: tiza solida = canchas libres (alto proporcional). Nunca queda vacia
+                        si hay canchas: tiene un minimo, y el riel de fondo tiene borde para que se lea. */}
+                    <span className="relative mt-2 h-24 w-full overflow-hidden rounded-[3px] bg-grama-profunda ring-1 ring-cal/25">
+                      {!n.cargando && !n.pasada && n.libres > 0 && (
+                        <span
+                          className={`subir absolute inset-x-0 bottom-0 ${elegida ? "bg-acento" : "bg-cal"}`}
+                          style={{
+                            height: `${Math.max(12, (n.libres / Math.max(catalogo.length, 1)) * 100)}%`,
+                            animationDelay: `${150 + i * 60}ms`,
+                          }}
+                        />
+                      )}
+                      {n.pasada && (
+                        <span className="absolute inset-0 flex items-center justify-center text-[11px] font-semibold text-cal">Pasó</span>
+                      )}
+                    </span>
+                    <span className="mt-2 whitespace-nowrap text-xs font-semibold text-cal sm:text-sm">{nombreHora(n.hora)}</span>
+                    <span className={`mt-0.5 h-4 text-[11px] font-semibold ${elegida ? "text-cal" : "text-cal/90"}`}>
+                      {elegida ? "✓ Elegida" : mejor ? "Más libres" : ""}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
             )}
 
