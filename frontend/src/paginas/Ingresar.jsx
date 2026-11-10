@@ -1,5 +1,5 @@
 // Inicio de sesion. La contrasena viaja a la API, que la compara con el hash bcrypt.
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Clock } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 import LineasCancha from "../componentes/LineasCancha.jsx";
@@ -51,6 +51,13 @@ export default function Ingresar() {
             Créala aquí
           </Link>
         </p>
+
+        {ubicacion.state?.aviso && !error && (
+          <p role="status" className="mt-6 flex items-start gap-2 rounded-pieza border border-alerta/40 bg-superficie p-3 text-sm">
+            <Clock className="mt-0.5 size-4 shrink-0 text-alerta" strokeWidth={1.75} />
+            {ubicacion.state.aviso}
+          </p>
+        )}
 
         <form onSubmit={enviar} noValidate className="mt-8 space-y-4">
           <label className="block">
