@@ -211,10 +211,22 @@ export default function Inicio() {
   // Panel "Mas filtros": se abre y cierra con teclado; Esc lo cierra y el foco vuelve al boton
   const [masAbierto, setMasAbierto] = useState(false);
   const botonMasRef = useRef(null);
+  const panelMasRef = useRef(null);
   const cerrarMas = () => {
     setMasAbierto(false);
     botonMasRef.current?.focus();
   };
+  // Clic (o toque) fuera del panel y de su boton: se cierra. Aqui NO se mueve el foco:
+  // la persona hizo clic en otra parte y el foco debe quedarse donde hizo clic.
+  useEffect(() => {
+    if (!masAbierto) return;
+    const alPresionar = (e) => {
+      if (panelMasRef.current?.contains(e.target) || botonMasRef.current?.contains(e.target)) return;
+      setMasAbierto(false);
+    };
+    document.addEventListener("pointerdown", alPresionar);
+    return () => document.removeEventListener("pointerdown", alPresionar);
+  }, [masAbierto]);
   const zonasDisponibles = filtros.ciudad
     ? [...(conteos.zonas[filtros.ciudad] ?? [])].sort()
     : [...new Set(Object.values(conteos.zonas).flatMap((z) => [...z]))].sort();
@@ -493,6 +505,7 @@ export default function Inicio() {
           </div>
           {masAbierto && (
             <div
+              ref={panelMasRef}
               id="mas-filtros"
               role="region"
               aria-label="Más filtros"

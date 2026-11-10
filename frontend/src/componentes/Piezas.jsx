@@ -49,7 +49,7 @@ export function Chip({ activo = false, neutro = false, conteo, onClick, children
           : "border-linea-fuerte text-tinta-suave hover:border-tinta hover:text-tinta"
       } ${className}`}
     >
-      {activo && !neutro && <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />}
+      {activo && <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />}
       {children}
       {conteo !== undefined && <span className="cifras opacity-60">{conteo}</span>}
     </button>
