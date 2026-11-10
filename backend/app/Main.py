@@ -33,7 +33,7 @@ app = FastAPI(
 # si su direccion esta en esta lista.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[Config.FRONTEND_URL],
+    allow_origins=Config.FRONTEND_URLS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

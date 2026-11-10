@@ -24,7 +24,9 @@ MONGODB_URI = _obligatoria("MONGODB_URI")
 MONGODB_DB = os.getenv("MONGODB_DB", "parche")
 JWT_SECRET = _obligatoria("JWT_SECRET")
 JWT_MINUTOS = int(os.getenv("JWT_MINUTOS", "480"))  # duracion de la sesion: 8 horas
-FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
+# Direcciones de la interfaz que pueden llamar a la API (CORS). Varias, separadas por coma:
+# en Render queda "https://parche-xxx.vercel.app,http://localhost:5173"
+FRONTEND_URLS = [u.strip().rstrip("/") for u in os.getenv("FRONTEND_URL", "http://localhost:5173").split(",") if u.strip()]
 
 # Todas las reglas de tiempo usan la hora de Colombia del SERVIDOR, nunca la del usuario
 COLOMBIA = timezone(timedelta(hours=-5))
