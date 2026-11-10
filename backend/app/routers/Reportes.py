@@ -209,7 +209,7 @@ def deportes_mas_reservados(desde: Optional[str] = Query(None), hasta: Optional[
         }},
         {"$project": {"_id": 0, "deporte": "$_id.deporte", "modalidad": "$_id.modalidad",
                       "reservas": 1, "ingresos": 1}},
-        {"$sort": {"reservas": -1}},
+        {"$sort": {"reservas": -1, "modalidad": 1}},  # desempate: con igual numero de reservas, orden alfabetico (resultado siempre igual)
     ]
     return list(db.reservas.aggregate(pipeline))
 

@@ -125,7 +125,7 @@ db.reservas.aggregate([
               fecha: { $gte: desde, $lte: hasta } } },
   { $group: { _id: { deporte: "$deporte", modalidad: "$modalidad" },
               reservas: { $sum: 1 }, ingresos: { $sum: "$precio_total" } } },
-  { $sort: { reservas: -1 } }
+  { $sort: { reservas: -1, "_id.modalidad": 1 } }   // desempate alfabético
 ])
 ```
 

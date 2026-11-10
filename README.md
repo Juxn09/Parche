@@ -98,7 +98,7 @@ Las crea `CargarDatos.py`, todas con la contraseña definida en `SEED_PASSWORD`:
 ## Pruebas y calidad
 
 ### Pruebas automáticas (backend)
-Hay 27 pruebas, con pytest, de las reglas críticas:
+Hay 30 pruebas, con pytest, de las reglas críticas:
 - cruce de reservas, incluido un cruce parcial (7 a 9 contra 8 a 9);
 - bloqueos;
 - 6 reservas simultáneas, de las que solo una puede ganar;

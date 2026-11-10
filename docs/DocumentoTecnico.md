@@ -258,7 +258,7 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 
 **Esto está probado automáticamente**: 6 reservas simultáneas de la misma hora dan exactamente un 201 y cinco 409 (ver la sección 8.1).
 
-`[[EVIDENCIA: salida de "python -m pytest" con 27 pruebas aprobadas]]`
+`[[EVIDENCIA: salida de "python -m pytest" con 30 pruebas aprobadas]]`
 
 **Seguridad:**
 - Las contraseñas se guardan con **bcrypt**: hash lento con sal, que no se puede revertir.
@@ -277,7 +277,7 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 
 ### 8.1 Pruebas automáticas
 
-27 pruebas con **pytest** (`backend/pruebas/`) verifican las reglas críticas contra un **MongoDB 7.0 real y temporal**, levantado con `pymongo-inmemory`. Nunca tocan Atlas: un candado detiene todo si la base no es local o no se llama `parche_pruebas`. Cada prueba crea las colecciones con **los mismos** `$jsonSchema` e índices de `CrearColecciones.py`.
+30 pruebas con **pytest** (`backend/pruebas/`) verifican las reglas críticas contra un **MongoDB 7.0 real y temporal**, levantado con `pymongo-inmemory`. Nunca tocan Atlas: un candado detiene todo si la base no es local o no se llama `parche_pruebas`. Cada prueba crea las colecciones con **los mismos** `$jsonSchema` e índices de `CrearColecciones.py`.
 
 | Grupo | Qué se comprueba |
 |---|---|
@@ -286,7 +286,8 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 | Seguridad | Sin token 401, rol equivocado 403, token falso 401, usuario desactivado 401; nadie se registra como admin (422 en español); correo repetido 409 por el índice único |
 | Multi-tenant | Un propietario no ve, edita, borra ni bloquea canchas de otro (404); la agenda solo trae reservas propias |
 | Moderación | Las canchas de un propietario inactivo no aparecen ni se reservan; rechazar una sede con reservas pide confirmación |
-| Datos | `finalizar_reservas_pasadas` es idempotente; `$jsonSchema` rechaza un documento inválido insertado directamente |
+| Datos | `finalizar_reservas_pasadas` es idempotente; `$jsonSchema` rechaza un documento inválido insertado directamente; un partido finalizado o cancelado rechaza unirse, salir y cancelar con un mensaje claro |
+| Reportes | El reporte de deportes desempata alfabéticamente y su orden es estable |
 
 **¿Cómo sabemos que las pruebas sirven?** Se hizo una prueba de mutación: se quitó temporalmente la unicidad del índice `ux_cancha_franja_activa` y fallaron las 3 pruebas de cruce. Al restaurarlo, volvieron a pasar.
 
@@ -311,6 +312,8 @@ Todos los reportes se calculan con **Aggregation Pipeline** dentro de MongoDB (`
 | 7 | ¿Qué zonas tienen más demanda? | Admin | `$group` → `$sort` → `$limit` | Dónde buscar nuevos propietarios |
 | 8 | ¿Se llenan los partidos abiertos? | Admin | `$project` → **`$facet`** (general y por deporte) → `$avg` | Medir si la función diferencial de Parche funciona |
 | 9 | ¿Cómo crecen las reservas mes a mes? | Admin | `$group` con `$cond` → `$sort` | Tendencia de la plataforma |
+
+**Cambio documentado en un reporte (10 de noviembre de 2026).** Al comparar los reportes antes y después de finalizar reservas, el reporte 6 salió una vez con **otro orden pero el mismo contenido**. La causa: `$sort: {reservas: -1}` no garantiza el orden entre modalidades **empatadas**. Se agregó un desempate alfabético, `$sort: {reservas: -1, modalidad: 1}`; es la única edición hecha a los pipelines de `Reportes.py`. La prueba `PruebaReportes.py` lo verifica: con dos modalidades empatadas, el orden es siempre el mismo en 5 consultas seguidas. Al quitar el desempate, la prueba falla.
 
 **Resultados con los datos de prueba** (8 semanas):
 - la hora más llena es el sábado a las 7 p. m., con 22,9 %;
