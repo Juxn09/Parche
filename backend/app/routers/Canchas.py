@@ -6,6 +6,7 @@ y disponibilidad por horas.
 import re
 from typing import Literal, Optional
 
+from bson import ObjectId
 from fastapi import APIRouter, HTTPException, Query, status
 from pymongo.errors import OperationFailure
 
@@ -115,6 +116,74 @@ def buscar_canchas(
     total = db.canchas.count_documents(filtro)
     canchas = db.canchas.find(filtro).sort(orden_mongo).skip(saltar).limit(limite)
     return {"total": total, "motor_busqueda": motor, "resultados": a_json(list(canchas))}
+
+
+# ---------------------------------------------------------------
+# Libres hoy: para la fila "Libre hoy: 7 · 8 · 9 p. m." de la lista.
+# Va ANTES de "/{cancha_id}": si no, FastAPI tomaria "libres-hoy" como un id.
+# ---------------------------------------------------------------
+MAXIMO_IDS_LIBRES = 50  # una pagina de la lista; evita consultas gigantes
+
+
+def _leer_ids(ids: str) -> list:
+    """'a,b,a' -> [ObjectId(a), ObjectId(b)] sin repetidos. Rechaza vacios, invalidos y exceso."""
+    textos = list(dict.fromkeys(t.strip() for t in ids.split(",") if t.strip()))
+    if not textos:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, "Envía al menos un id de cancha en 'ids'")
+    if len(textos) > MAXIMO_IDS_LIBRES:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST,
+                            f"Puedes consultar hasta {MAXIMO_IDS_LIBRES} canchas a la vez (enviaste {len(textos)})")
+    invalidos = [t for t in textos if not ObjectId.is_valid(t)]
+    if invalidos:
+        raise HTTPException(status.HTTP_400_BAD_REQUEST, f"Identificador de cancha inválido: {invalidos[0]}")
+    return [ObjectId(t) for t in textos]
+
+
+@router.get("/libres-hoy")
+def libres_hoy(ids: str = Query(..., description="Ids de cancha separados por coma (máximo 50)")):
+    """
+    Horas que quedan libres HOY (de ahora al cierre de la sede), en hora de Bogota.
+    Una sola consulta a reservas para todas las canchas: filtra por cancha_id, franjas de hoy y
+    estado 'activa', los mismos campos del indice unico ux_cancha_franja_activa.
+    """
+    lista_ids = _leer_ids(ids)
+    momento_actual = ahora()  # hora de Colombia segun el servidor
+    hoy = momento_actual.date()
+
+    canchas = list(db.canchas.find(
+        {"_id": {"$in": lista_ids}, "estado": "activa", "propietario_id": {"$nin": propietarios_inactivos()}},
+        {"sede_id": 1},
+    ))
+    sedes = {s["_id"]: s for s in db.sedes.find(
+        {"_id": {"$in": list({c["sede_id"] for c in canchas})}, "estado": "aprobada"}, {"horario": 1})}
+
+    # Franjas ocupadas hoy (reservas y bloqueos activos) de TODAS las canchas pedidas, en una consulta
+    franjas_hoy = [franja(hoy, h) for h in range(24)]
+    ocupadas = {}
+    for r in db.reservas.find(
+        {"cancha_id": {"$in": [c["_id"] for c in canchas]}, "franjas": {"$in": franjas_hoy}, "estado": "activa"},
+        {"cancha_id": 1, "franjas": 1},
+    ):
+        ocupadas.setdefault(r["cancha_id"], set()).update(r["franjas"])
+
+    resultado = {}
+    for c in canchas:
+        sede = sedes.get(c["sede_id"])
+        if sede is None:
+            continue  # sede no aprobada: la cancha no se muestra
+        horario = horario_del_dia(sede, hoy)
+        if horario is None:
+            resultado[str(c["_id"])] = {"libres": [], "motivo": "cerrada_hoy"}
+            continue
+        abre, cierra = horario
+        libres = [h for h in range(abre, cierra)
+                  if momento(hoy, h) > momento_actual and franja(hoy, h) not in ocupadas.get(c["_id"], set())]
+        motivo = None
+        if not libres:
+            motivo = "ya_cerro" if momento(hoy, cierra - 1) <= momento_actual else "sin_horas"
+        resultado[str(c["_id"])] = {"libres": libres, "motivo": motivo}
+
+    return {"fecha": hoy.isoformat(), "hora_servidor": momento_actual.strftime("%H:%M"), "canchas": resultado}
 
 
 @router.get("/{cancha_id}")
