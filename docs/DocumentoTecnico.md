@@ -250,16 +250,47 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 | El precio de hora pico no puede ser menor que el normal | API | `Propietario.py` |
 | Una cancha con reservas futuras no se elimina ni pasa a mantenimiento | API | `Propietario.py` |
 | Nadie puede registrarse como administrador | API: Pydantic solo admite `cliente` o `propietario` | `Modelos.py` |
+| Las canchas de un propietario desactivado no aparecen ni se pueden reservar | API | `Utilidades.py` (`propietarios_inactivos`) |
+| Rechazar una sede con reservas futuras exige confirmación; las reservas existentes se respetan | API: responde 409 y luego acepta `confirmar: true` | `Admin.py` |
+| Una reserva que ya terminó pasa de `activa` a `finalizada` | API, con una función idempotente (ruta del admin y script) | `CicloDeVida.py` |
 
 **Por qué el cruce de reservas no se revisa con un `if`.** Si la API consultara primero "¿está libre?" y luego insertara, dos personas que reservan en el mismo instante pasarían ambas la consulta. Con el índice único, la base de datos acepta la primera inserción y rechaza la segunda: es imposible que se crucen.
 
-`[[EVIDENCIA: prueba de concurrencia — dos reservas simultáneas → 201 y 409]]`
+**Esto está probado automáticamente**: 6 reservas simultáneas de la misma hora dan exactamente un 201 y cinco 409 (ver la sección 8.1).
+
+`[[EVIDENCIA: salida de "python -m pytest" con 27 pruebas aprobadas]]`
 
 **Seguridad:**
 - Las contraseñas se guardan con **bcrypt**: hash lento con sal, que no se puede revertir.
 - La sesión usa **JWT** firmado (HS256) con una duración de 8 h.
 - Cada petición vuelve a consultar al usuario, así que si el admin lo desactiva su token deja de servir al instante.
 - **CORS** solo admite la dirección de la interfaz.
+
+**Manejo de errores.** Todos los errores llegan a la interfaz en JSON y en español:
+- La validación (422) traduce los mensajes de Pydantic. Por ejemplo, *"El tipo de cuenta debe ser una de estas opciones: cliente o propietario"*.
+- Si la base de datos no responde, la API contesta **503** *"La base de datos no está disponible en este momento"*, en vez de un 500 en texto plano.
+- Un middleware propio (`Errores.py`) se registra **antes** que CORS, así que también estas respuestas llevan las cabeceras CORS y el navegador puede leerlas.
+- En la interfaz:
+  - un 401 con sesión iniciada cierra la sesión y lleva a *Ingresar* con el aviso "Tu sesión expiró";
+  - cada petición tiene un tiempo máximo de 45 s;
+  - un error de conexión se muestra distinto de un resultado vacío.
+
+### 8.1 Pruebas automáticas
+
+27 pruebas con **pytest** (`backend/pruebas/`) verifican las reglas críticas contra un **MongoDB 7.0 real y temporal**, levantado con `pymongo-inmemory`. Nunca tocan Atlas: un candado detiene todo si la base no es local o no se llama `parche_pruebas`. Cada prueba crea las colecciones con **los mismos** `$jsonSchema` e índices de `CrearColecciones.py`.
+
+| Grupo | Qué se comprueba |
+|---|---|
+| Reservas | Precio pico calculado por el servidor; cruce parcial rechazado (7 a 9 contra 8 a 9); otra cancha a la misma hora sí se permite; cancelar libera la franja; bloqueos y reservas no se cruzan en ningún sentido; **6 reservas simultáneas → 1 gana**; no se reserva en el pasado, a más de 30 días ni fuera de horario; cancelar exige 24 h; solo el organizador cancela |
+| Partidos abiertos | Cuota = precio ÷ jugadores; no se supera el cupo, no se repite jugador y el organizador no se une a su partido; **5 uniones simultáneas a 3 cupos → exactamente 3**; salir devuelve el cupo; modalidades de menos de 4 jugadores no abren partido |
+| Seguridad | Sin token 401, rol equivocado 403, token falso 401, usuario desactivado 401; nadie se registra como admin (422 en español); correo repetido 409 por el índice único |
+| Multi-tenant | Un propietario no ve, edita, borra ni bloquea canchas de otro (404); la agenda solo trae reservas propias |
+| Moderación | Las canchas de un propietario inactivo no aparecen ni se reservan; rechazar una sede con reservas pide confirmación |
+| Datos | `finalizar_reservas_pasadas` es idempotente; `$jsonSchema` rechaza un documento inválido insertado directamente |
+
+**¿Cómo sabemos que las pruebas sirven?** Se hizo una prueba de mutación: se quitó temporalmente la unicidad del índice `ux_cancha_franja_activa` y fallaron las 3 pruebas de cruce. Al restaurarlo, volvieron a pasar.
+
+**¿Por qué no `mongomock`?** Porque no aplica el índice único sobre arreglos (*multikey*): aceptaría una reserva de 8 a 9 encima de otra de 7 a 9.
 
 ## 9. Consultas y reportes
 

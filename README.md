@@ -95,6 +95,40 @@ Las crea `CargarDatos.py`, todas con la contraseña definida en `SEED_PASSWORD`:
 | Propietario | `laura.gomez@elgolazo.co` |
 | Administrador | `admin@parche.co` |
 
+## Pruebas y calidad
+
+### Pruebas automáticas (backend)
+Hay 27 pruebas, con pytest, de las reglas críticas:
+- cruce de reservas, incluido un cruce parcial (7 a 9 contra 8 a 9);
+- bloqueos;
+- 6 reservas simultáneas, de las que solo una puede ganar;
+- precio de hora pico;
+- reglas de tiempo y cancelación con 24 h;
+- cupos y uniones simultáneas a un partido;
+- aislamiento multi-tenant, roles y moderación;
+- paso a `finalizada`;
+- validación `$jsonSchema`.
+
+```bash
+cd backend
+pip install -r RequisitosPruebas.txt
+python -m pytest
+```
+
+- Las pruebas **no tocan Atlas**. `pymongo-inmemory` levanta un **MongoDB 7.0 real y temporal** en tu PC; la primera vez descarga el servidor oficial desde `fastdl.mongodb.org`. Si la base no es local o no se llama `parche_pruebas`, las pruebas se detienen.
+- Cada prueba crea las colecciones con **los mismos** `$jsonSchema` e índices de `scripts/CrearColecciones.py`, así que se prueba exactamente lo que está en Atlas.
+- No se usa `mongomock` porque no aplica el índice único sobre arreglos: no detecta el cruce parcial de franjas.
+
+### Linter (frontend)
+```bash
+cd frontend
+npm run lint
+```
+ESLint revisa con las reglas recomendadas de JavaScript y de React Hooks.
+
+### Mantenimiento
+`python scripts/FinalizarReservas.py` cuenta las reservas activas que ya terminaron. Con `--aplicar`, las marca como `finalizada`; se puede repetir sin efectos extra. Lo mismo hace la ruta del admin `POST /api/admin/mantenimiento/finalizar-reservas`.
+
 ## Despliegue
 
 | Pieza | Servicio | Configuración |

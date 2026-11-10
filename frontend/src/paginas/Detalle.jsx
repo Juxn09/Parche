@@ -60,7 +60,7 @@ export default function Detalle() {
   }, [disponibilidad, fecha, parametros]);
 
   // --- Calculos de la seleccion ---
-  const horasDelDia = disponibilidad?.horas ?? [];
+  const horasDelDia = useMemo(() => disponibilidad?.horas ?? [], [disponibilidad]);
   const horasVisibles = horasDelDia.filter((h) => h.estado !== "pasada");
   const pasadas = horasDelDia.length - horasVisibles.length;
   const horasElegidas = useMemo(() => {
