@@ -352,19 +352,64 @@ Todos los reportes se calculan con **Aggregation Pipeline** dentro de MongoDB (`
 
 ## 10. Evidencias
 
-| # | Evidencia | Marcador |
+Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos de prueba cargados en Atlas; ninguna muestra contraseñas ni tokens.
+
+| # | Evidencia | Dónde |
 |---|---|---|
-| E1 | Cluster de Atlas y las 5 colecciones con datos | `[[CAPTURA: Compass conectado a Atlas]]` |
+| E1 | Cluster de Atlas y las 5 colecciones con datos | Texto abajo · captura de Atlas pendiente |
 | E2 | Validación `$jsonSchema` rechazando un documento | `[[CAPTURA: F2 - Validacion rechaza documento]]` |
-| E3 | Índices de `reservas`, con `ux_cancha_franja_activa` | `[[CAPTURA: getIndexes()]]` |
+| E3 | Índices de `reservas`, con `ux_cancha_franja_activa` | Texto abajo |
 | E4 | Índice de Atlas Search en estado READY | `[[CAPTURA: Atlas → Search]]` |
-| E5 | `.env` ignorado por Git (`git check-ignore -v backend/.env`) | `[[CAPTURA: terminal]]` |
+| E5 | `.env` ignorado por Git | Texto abajo |
 | E6 | Reserva hecha desde la interfaz y su documento en Atlas | `[[CAPTURA: reserva confirmada + documento en Compass]]` |
-| E7 | Reserva cruzada rechazada (409) | `[[CAPTURA: /docs con el 409]]` |
-| E8 | Panel del propietario: agenda y reportes | `[[CAPTURA]]` |
-| E9 | Panel del admin: aprobación de sede y métricas | `[[CAPTURA]]` |
+| E7 | Reserva cruzada rechazada (409) | [Imagen E7](evidencias/E7-ReservaCruzada409.jpg) |
+| E8 | Panel del propietario: agenda y reportes | [E8a](evidencias/E8a-PanelPropietarioAgenda.jpg) · [E8b](evidencias/E8b-PanelPropietarioReportes.jpg) |
+| E9 | Panel del admin: aprobación de sede y métricas | [E9a](evidencias/E9a-PanelAdminSedes.jpg) · [E9b](evidencias/E9b-PanelAdminMetricas.jpg) |
 | E10 | API desplegada en Render (`/api/salud`) | `[[CAPTURA]]` |
 | E11 | Interfaz desplegada en Vercel, abierta desde un celular | `[[CAPTURA]]` |
+
+**E1 y E3. Colecciones e índices en Atlas** (consulta de solo lectura con PyMongo):
+
+```text
+base: parche
+  canchas         23 documentos
+  deportes         5 documentos
+  reservas       964 documentos
+  sedes            8 documentos
+  usuarios        35 documentos
+índices de reservas:
+  _id_                     {_id: 1}
+  ux_cancha_franja_activa  {cancha_id: 1, franjas: 1}  unique, partial {estado: "activa"}
+  ix_usuario_fecha         {usuario_id: 1, fecha: -1}
+  ix_propietario_fecha     {propietario_id: 1, fecha: -1}
+  ix_partidos_abiertos     {partido_abierto.estado: 1, fecha: 1}
+validador de reservas: validationLevel strict
+```
+
+**E5. Las credenciales no están en el repositorio:**
+
+```text
+$ git check-ignore -v backend/.env
+.gitignore:2:.env	backend/.env
+$ git ls-files | grep -c '\.env$'
+0
+```
+
+**E7. Reserva cruzada rechazada.** Desde `/docs` se intentó reservar la Pista 2 del Pádel Club Chapinero el 11 de noviembre a las 3 p. m., hora que ya estaba reservada. La API respondió **409 "Ese horario ya está ocupado en esta cancha"**. En Atlas siguió habiendo una sola reserva en esa franja y 964 en total: el índice único impidió la escritura.
+
+![E7. Reserva cruzada rechazada con 409](evidencias/E7-ReservaCruzada409.jpg)
+
+**E8. Panel del propietario.** Agenda del día con reservas, partidos abiertos y bloqueos; y el mapa de horas pico, que sale de un pipeline `$match → $unwind → $project → $group → $sort`.
+
+![E8a. Agenda del día del propietario](evidencias/E8a-PanelPropietarioAgenda.jpg)
+
+![E8b. Reportes del propietario: horas pico](evidencias/E8b-PanelPropietarioReportes.jpg)
+
+**E9. Panel del administrador.** Sede pendiente de aprobación y métricas de la plataforma por mes.
+
+![E9a. Sedes pendientes de aprobación](evidencias/E9a-PanelAdminSedes.jpg)
+
+![E9b. Métricas de la plataforma](evidencias/E9b-PanelAdminMetricas.jpg)
 
 ## 11. Despliegue
 
