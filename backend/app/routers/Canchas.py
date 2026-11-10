@@ -113,6 +113,9 @@ def buscar_canchas(
         filtro.setdefault("_id", {})["$nin"] = ocupadas
 
     orden_mongo = [("precio_hora", 1), ("nombre", 1)] if orden == "precio" else [("sede.nombre", 1), ("nombre", 1)]
+    # _id al final hace el orden UNICO: sin esto, dos canchas empatadas (mismo precio y nombre)
+    # pueden cambiar de lugar entre paginas y "Cargar mas" repetiria una y perderia otra.
+    orden_mongo.append(("_id", 1))
     total = db.canchas.count_documents(filtro)
     canchas = db.canchas.find(filtro).sort(orden_mongo).skip(saltar).limit(limite)
     return {"total": total, "motor_busqueda": motor, "resultados": a_json(list(canchas))}
