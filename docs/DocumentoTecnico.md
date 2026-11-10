@@ -85,9 +85,9 @@ flowchart LR
 erDiagram
     USUARIOS ||--o{ SEDES : "posee (propietario_id)"
     SEDES ||--o{ CANCHAS : "tiene (sede_id)"
-    USUARIOS ||--o{ RESERVAS : "organiza (usuario_id)"
+    USUARIOS ||--o{ RESERVAS : "hace (usuario_id)"
     CANCHAS ||--o{ RESERVAS : "se reserva (cancha_id)"
-    DEPORTES ||--o{ CANCHAS : "catálogo que valida"
+    DEPORTES ||--o{ CANCHAS : "catalogo que valida"
     USUARIOS ||--o| EMPRESA : "embebe"
     DEPORTES ||--|{ MODALIDAD : "embebe"
     SEDES ||--|{ HORARIO : "embebe"
@@ -101,22 +101,46 @@ erDiagram
         string email UK
         string password_hash
         string rol "cliente | propietario | admin"
+        string ciudad
         bool activo
+    }
+    EMPRESA {
+        string razon_social
+        string nit
+    }
+    DEPORTES {
+        ObjectId _id PK
+        string nombre UK
+        bool activo
+    }
+    MODALIDAD {
+        string nombre
+        int jugadores
+        int duracion_min
     }
     SEDES {
         ObjectId _id PK
         ObjectId propietario_id FK
         string nombre
+        string ciudad
         string zona
         GeoJSON ubicacion
+        array servicios
         string estado "pendiente | aprobada | rechazada"
+    }
+    HORARIO {
+        string dia
+        string abre
+        string cierra
     }
     CANCHAS {
         ObjectId _id PK
         ObjectId sede_id FK
         ObjectId propietario_id "copia"
         object sede "copia: nombre, ciudad, zona"
+        string nombre
         array deportes "deporte + modalidad"
+        string superficie
         int precio_hora
         int precio_hora_pico
         string estado "activa | mantenimiento | inactiva"
@@ -127,22 +151,33 @@ erDiagram
         ObjectId cancha_id FK
         ObjectId usuario_id FK
         ObjectId propietario_id "copia"
-        object cancha "copia histórica"
-        string fecha "AAAA-MM-DD"
+        object cancha "copia historica"
+        string deporte
+        string modalidad
+        string fecha
         array franjas "ej. 2026-11-12T19"
-        int precio_total "copia histórica"
+        int precio_total "copia historica"
         string estado "activa | cancelada | finalizada"
     }
-    DEPORTES {
-        ObjectId _id PK
-        string nombre UK
+    PAGO {
+        string metodo
+        int valor
+        string estado
     }
     PARTIDO_ABIERTO {
         int cupos_totales
         int cuota
         string estado "abierto | completo | cerrado"
     }
+    PARTICIPANTE {
+        ObjectId usuario_id
+        string nombre
+        int cuota_pagada
+        date fecha_union
+    }
 ```
+
+> Diagrama completo del modelo: las 5 colecciones con sus campos y los subdocumentos embebidos (empresa, horario, modalidad, pago, partido abierto y participante). Es el mismo de `docs/ModeloDeDatos.md`.
 
 ### 5.1 Colecciones
 
@@ -357,7 +392,7 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | # | Evidencia | Dónde |
 |---|---|---|
 | E1 | Cluster de Atlas y las 5 colecciones con datos | Texto abajo · captura de Atlas pendiente |
-| E2 | Validación `$jsonSchema` rechazando un documento | `[[CAPTURA: F2 - Validacion rechaza documento]]` |
+| E2 | Validación `$jsonSchema` rechazando un documento | [Imagen E2](evidencias/E2-ValidacionRechaza.png) |
 | E3 | Índices de `reservas`, con `ux_cancha_franja_activa` | Texto abajo |
 | E4 | Índice de Atlas Search en estado READY | `[[CAPTURA: Atlas → Search]]` |
 | E5 | `.env` ignorado por Git | Texto abajo |
@@ -394,6 +429,10 @@ $ git check-ignore -v backend/.env
 $ git ls-files | grep -c '\.env$'
 0
 ```
+
+**E2. La base rechaza un documento inválido.** Desde la consola de Compass conectada a Atlas se intentó insertar un usuario sin los campos obligatorios, con un correo inválido y un rol que no existe. El servidor respondió `Document failed validation`: la regla `$jsonSchema` con `validationLevel: strict` actúa en la base, aunque nadie pase por la API.
+
+![E2. $jsonSchema rechazando un documento](evidencias/E2-ValidacionRechaza.png)
 
 **E7. Reserva cruzada rechazada.** Desde `/docs` se intentó reservar la Pista 2 del Pádel Club Chapinero el 11 de noviembre a las 3 p. m., hora que ya estaba reservada. La API respondió **409 "Ese horario ya está ocupado en esta cancha"**. En Atlas siguió habiendo una sola reserva en esa franja y 964 en total: el índice único impidió la escritura.
 
