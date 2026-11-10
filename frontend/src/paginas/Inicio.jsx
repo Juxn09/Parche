@@ -32,6 +32,7 @@ export default function Inicio() {
   const [deportes, setDeportes] = useState([]);
   const [catalogo, setCatalogo] = useState([]);
   const [noche, setNoche] = useState(null);
+  const [errorNoche, setErrorNoche] = useState(false);
   const [partidos, setPartidos] = useState([]);
   const [filtros, setFiltros] = useState(FILTROS_VACIOS);
   const [textoEscrito, setTextoEscrito] = useState("");
@@ -65,8 +66,12 @@ export default function Inicio() {
             })),
       ),
     )
-      .then(setNoche)
-      .catch(() => setNoche([]));
+      .then((datos) => {
+        setNoche(datos);
+        setErrorNoche(false);
+      })
+      // Un error NO es lo mismo que "no quedan horas": se muestra distinto
+      .catch(() => setErrorNoche(true));
   }, [fechaNoche, esManana, intento]);
 
   // Partidos abiertos que buscan jugadores (la funcion diferencial de Parche, en la portada)
@@ -153,6 +158,22 @@ export default function Inicio() {
             </h2>
             <p className="mt-0.5 text-sm text-cal/70">Toca una hora para ver cuáles son.</p>
 
+            {errorNoche ? (
+              <div className="mt-5 rounded-[4px] bg-cal/10 p-4 text-sm">
+                <p className="font-semibold">No pudimos consultar las horas de esta noche.</p>
+                <p className="mt-1 text-cal/75">Puede ser tu conexión o el servidor está despertando.</p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setErrorNoche(false);
+                    setIntento((n) => n + 1);
+                  }}
+                  className="mt-3 font-semibold underline underline-offset-4"
+                >
+                  Intentar de nuevo
+                </button>
+              </div>
+            ) : (
             <div className="mt-5 grid grid-cols-5 gap-2 sm:gap-3">
               {(noche ?? HORAS_NOCHE.map((h) => ({ hora: h, cargando: true }))).map((n, i) => (
                 <button
@@ -188,8 +209,9 @@ export default function Inicio() {
                 </button>
               ))}
             </div>
+            )}
 
-            {mejorHora && mejorHora.libres > 0 && (
+            {!errorNoche && mejorHora && mejorHora.libres > 0 && (
               <button
                 type="button"
                 onClick={() => verHora(mejorHora.hora)}
@@ -198,7 +220,7 @@ export default function Inicio() {
                 Ver las {mejorHora.libres} canchas libres a las {nombreHora(mejorHora.hora)}
               </button>
             )}
-            {noche && !mejorHora && (
+            {!errorNoche && noche && !mejorHora && (
               <p className="mt-5 text-sm text-cal/80">Por hoy ya no quedan horas pico. Busca para mañana abajo.</p>
             )}
           </div>
@@ -345,7 +367,7 @@ export default function Inicio() {
         {/* ---------------- Resultados ---------------- */}
         <div className="mt-8 flex items-baseline justify-between gap-4">
           <p className="text-lg">
-            {cargando && !resultado ? (
+            {error ? null : cargando && !resultado ? (
               "Buscando canchas"
             ) : (
               <>

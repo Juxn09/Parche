@@ -138,7 +138,7 @@ export default function Detalle() {
       </section>
     );
   }
-  if (!cancha) return <div className="mx-auto h-96 max-w-6xl animate-pulse px-4 py-16 sm:px-6" aria-label="Cargando" />;
+  if (!cancha) return <EsqueletoDetalle />;
 
   const sede = cancha.sede_completa;
   const dias = Array.from({ length: DIAS_VISIBLES }, (_, i) => fechaLocal(i));
@@ -405,6 +405,26 @@ export default function Detalle() {
         </aside>
       </section>
     </>
+  );
+}
+
+// Mientras carga: la misma forma de la pagina (cabecera de grama + regleta), sin datos
+function EsqueletoDetalle() {
+  return (
+    <div aria-label="Cargando la cancha" role="status">
+      <div className="grama">
+        <div className="mx-auto max-w-6xl space-y-4 px-4 pb-10 pt-14 sm:px-6">
+          <div className="h-5 w-40 animate-pulse rounded bg-cal/15" />
+          <div className="h-16 w-72 max-w-full animate-pulse rounded bg-cal/15" />
+          <div className="h-5 w-64 max-w-full animate-pulse rounded bg-cal/15" />
+        </div>
+      </div>
+      <div className="mx-auto grid max-w-6xl grid-cols-3 gap-2 px-4 py-10 sm:grid-cols-6 sm:px-6">
+        {Array.from({ length: 12 }, (_, i) => (
+          <div key={i} className="h-16 animate-pulse rounded-pieza bg-hundido" />
+        ))}
+      </div>
+    </div>
   );
 }
 

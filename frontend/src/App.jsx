@@ -5,6 +5,7 @@ import Detalle from "./paginas/Detalle.jsx";
 import Ingresar from "./paginas/Ingresar.jsx";
 import Inicio from "./paginas/Inicio.jsx";
 import MisReservas from "./paginas/MisReservas.jsx";
+import NoEncontrada from "./paginas/NoEncontrada.jsx";
 import PanelAdmin from "./paginas/PanelAdmin.jsx";
 import PanelPropietario from "./paginas/PanelPropietario.jsx";
 import Partidos from "./paginas/Partidos.jsx";
@@ -27,7 +28,7 @@ export default function App() {
           <Route path="/mis-reservas" element={<MisReservas />} />
           <Route path="/panel" element={<PanelPropietario />} />
           <Route path="/admin" element={<PanelAdmin />} />
-          <Route path="*" element={<Inicio />} />
+          <Route path="*" element={<NoEncontrada />} />
         </Routes>
         </ErrorPantalla>
       </main>
