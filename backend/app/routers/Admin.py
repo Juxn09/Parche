@@ -10,8 +10,9 @@ from typing import Literal, Optional
 from fastapi import APIRouter, Body, Depends, HTTPException, status
 
 from app.BaseDatos import a_json, db
+from app.CicloDeVida import finalizar_reservas_pasadas
 from app.Seguridad import requiere_rol
-from app.Utilidades import a_object_id
+from app.Utilidades import a_object_id, ahora
 
 router = APIRouter(prefix="/api/admin", tags=["Panel del admin"])
 solo_admin = requiere_rol("admin")
@@ -50,9 +51,32 @@ def aprobar_sede(sede_id: str, usuario: dict = Depends(solo_admin)):
     return _cambiar_estado_sede(sede_id, "aprobada", None, usuario)
 
 
+def _reservas_futuras_de_sede(sede_id: str) -> int:
+    """Reservas activas de hoy en adelante en las canchas de la sede."""
+    canchas = db.canchas.distinct("_id", {"sede_id": a_object_id(sede_id)})
+    return db.reservas.count_documents({
+        "cancha_id": {"$in": canchas}, "tipo": "reserva", "estado": "activa",
+        "fecha": {"$gte": ahora().date().isoformat()},
+    })
+
+
 @router.post("/sedes/{sede_id}/rechazar")
-def rechazar_sede(sede_id: str, motivo: str = Body(..., embed=True, min_length=5),
+def rechazar_sede(sede_id: str, motivo: str = Body(..., min_length=5),
+                  confirmar: bool = Body(False, description="Rechazarla aunque tenga reservas futuras"),
                   usuario: dict = Depends(solo_admin)):
+    """
+    Si la sede ya tiene reservas futuras, primero ADVIERTE (409) y solo la rechaza si
+    se reenvia con confirmar=true. Las reservas existentes se respetan: siguen activas
+    y los jugadores pueden cancelarlas; la sede solo deja de aparecer en la busqueda.
+    """
+    futuras = _reservas_futuras_de_sede(sede_id)
+    if futuras and not confirmar:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"La sede tiene {futuras} {'reserva activa' if futuras == 1 else 'reservas activas'} de hoy en adelante. "
+            "Si la rechazas deja de aparecer en la búsqueda, pero esas reservas siguen vigentes. "
+            "Confirma para rechazarla de todas formas.",
+        )
     return _cambiar_estado_sede(sede_id, "rechazada", motivo, usuario)
 
 
@@ -80,3 +104,9 @@ def activar_usuario(usuario_id: str, activo: bool = Body(..., embed=True),
     if resultado.matched_count == 0:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Usuario no encontrado")
     return {"resultado": "activado" if activo else "desactivado"}
+
+
+@router.post("/mantenimiento/finalizar-reservas")
+def finalizar_reservas(usuario: dict = Depends(solo_admin)):
+    """Pasa a 'finalizada' las reservas y bloqueos activos que ya terminaron (idempotente)."""
+    return {"finalizadas": finalizar_reservas_pasadas(db)}

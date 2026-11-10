@@ -7,7 +7,7 @@ import Cupos from "../componentes/Cupos.jsx";
 import Pictograma, { LineasDeporte } from "../componentes/Pictograma.jsx";
 import { useSesion } from "../contexto/Sesion.jsx";
 import { api, pesos } from "../servicios/Api.js";
-import { METODOS_PAGO, fechaLocal, horasParaEmpezar, nombreDia, nombreHora } from "../servicios/Catalogo.js";
+import { METODOS_PAGO, horasParaEmpezar, nombreDia, nombreHora } from "../servicios/Catalogo.js";
 
 const PESTANAS = [
   { clave: "proximas", nombre: "Próximas" },
@@ -35,11 +35,12 @@ export default function MisReservas() {
   }, [cargar]);
 
   const grupos = useMemo(() => {
-    const hoy = fechaLocal();
     const g = { proximas: [], pasadas: [], canceladas: [] };
     for (const r of reservas ?? []) {
+      // "Proxima" = activa y todavia no termina (hora de FIN, no solo la fecha): asi un partido
+      // de hoy que ya acabo pasa a "Jugadas" aunque la API aun no lo haya marcado como finalizada.
       if (r.estado === "cancelada") g.canceladas.push(r);
-      else if (r.estado === "activa" && r.fecha >= hoy) g.proximas.push(r);
+      else if (r.estado === "activa" && horasParaEmpezar(r.fecha, r.hora_fin) > 0) g.proximas.push(r);
       else g.pasadas.push(r);
     }
     g.proximas.reverse(); // la mas cercana primero

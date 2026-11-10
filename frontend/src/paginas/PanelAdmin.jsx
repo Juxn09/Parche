@@ -49,6 +49,7 @@ function Sedes({ token }) {
   const [rechazando, setRechazando] = useState(null);
   const [motivo, setMotivo] = useState("");
   const [aviso, setAviso] = useState(null);
+  const [advertencia, setAdvertencia] = useState(null); // { sedeId, texto } cuando la API pide confirmar
 
   const cargar = useCallback(() => {
     setSedes(null);
@@ -59,13 +60,14 @@ function Sedes({ token }) {
     cargar();
   }, [cargar]);
 
-  async function decidir(sede, accion) {
+  async function decidir(sede, accion, confirmar = false) {
     try {
       await api(`/api/admin/sedes/${sede._id}/${accion}`, {
         metodo: "POST",
         token,
-        cuerpo: accion === "rechazar" ? { motivo } : undefined,
+        cuerpo: accion === "rechazar" ? { motivo, confirmar } : undefined,
       });
+      setAdvertencia(null);
       setAviso({
         tipo: "ok",
         texto:
@@ -77,7 +79,9 @@ function Sedes({ token }) {
       setMotivo("");
       cargar();
     } catch (e) {
-      setAviso({ tipo: "error", texto: e.message });
+      // 409 al rechazar: la sede tiene reservas futuras y la API pide confirmacion
+      if (accion === "rechazar" && e.estado === 409) setAdvertencia({ sedeId: sede._id, texto: e.message });
+      else setAviso({ tipo: "error", texto: e.message });
     }
   }
 
@@ -137,6 +141,19 @@ function Sedes({ token }) {
                   <button type="button" disabled={motivo.trim().length < 5} onClick={() => decidir(s, "rechazar")} className={claseBotonPrincipal}>
                     Rechazar sede
                   </button>
+                  {advertencia?.sedeId === s._id && (
+                    <div role="alert" className="w-full rounded-pieza border border-alerta/50 bg-superficie p-3 text-sm">
+                      <p>{advertencia.texto}</p>
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button type="button" onClick={() => decidir(s, "rechazar", true)} className={`${claseBotonSecundario} border-error text-error`}>
+                          Rechazar de todas formas
+                        </button>
+                        <button type="button" onClick={() => setAdvertencia(null)} className={claseBotonSecundario}>
+                          No, dejarla aprobada
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </li>
