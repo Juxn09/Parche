@@ -9,10 +9,12 @@ Documentacion interactiva: http://127.0.0.1:8000/docs
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 
 from app import Config
 from app.BaseDatos import a_json, comprobar_conexion, db
+from app.Errores import capturar_errores, error_de_validacion
 from app.routers import Admin, Auth, Canchas, Partidos, Propietario, Reportes, Reservas
 
 
@@ -28,6 +30,12 @@ app = FastAPI(
     version="1.0.0",
     lifespan=ciclo_de_vida,
 )
+
+# Errores siempre en JSON y en espanol (ver Errores.py).
+# ORDEN IMPORTANTE: el ultimo middleware agregado queda por fuera. Este se agrega
+# antes que CORS, asi CORS envuelve tambien las respuestas de error.
+app.middleware("http")(capturar_errores)
+app.add_exception_handler(RequestValidationError, error_de_validacion)
 
 # CORS: el navegador solo deja que la pagina del frontend llame a esta API
 # si su direccion esta en esta lista.
