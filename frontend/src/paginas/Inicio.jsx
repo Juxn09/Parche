@@ -1,13 +1,13 @@
 // Pagina de inicio: "¿Juegas hoy?"
 // La portada es una cancha de noche con la agenda REAL de las horas pico (6 a 10 p. m.):
 // cuantas canchas quedan libres en cada hora, consultando la API.
-import { AlertCircle, Clock, MapPin, RotateCcw, Search, Sun, Warehouse, X } from "lucide-react";
+import { AlertCircle, ChevronDown, Clock, MapPin, RotateCcw, Search, SlidersHorizontal, Sun, Warehouse, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import Cupos from "../componentes/Cupos.jsx";
 import LineasCancha from "../componentes/LineasCancha.jsx";
 import Pictograma from "../componentes/Pictograma.jsx";
-import { Boton, InsigniaPico } from "../componentes/Piezas.jsx";
+import { Boton, Campo, Chip, EstadoVacio, InsigniaPico, Selector } from "../componentes/Piezas.jsx";
 import { api, pesos } from "../servicios/Api.js";
 import { SUPERFICIES, fechaLocal, horasCompactas, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
 
@@ -18,6 +18,7 @@ const FILTROS_VACIOS = {
   deporte: "",
   modalidad: "",
   ciudad: "",
+  zona: "",
   precio_max: "",
   fecha: "",
   hora: "",
@@ -169,17 +170,54 @@ export default function Inicio() {
     for (const c of catalogo) {
       for (const d of new Set(c.deportes.map((x) => x.deporte))) porDeporte[d] = (porDeporte[d] || 0) + 1;
     }
-    return { porDeporte, ciudades: [...new Set(catalogo.map((c) => c.sede.ciudad))].sort() };
+    const zonas = {};
+    for (const c of catalogo) (zonas[c.sede.ciudad] ??= new Set()).add(c.sede.zona);
+    return { porDeporte, ciudades: [...new Set(catalogo.map((c) => c.sede.ciudad))].sort(), zonas };
   }, [catalogo]);
 
   const modalidades = deportes.find((d) => d.nombre === filtros.deporte)?.modalidades ?? [];
   const cambiar = (campo, valor) => setFiltros((f) => ({ ...f, [campo]: valor }));
-  const hayFiltros =
-    textoEscrito || Object.entries(filtros).some(([k, v]) => k !== "orden" && k !== "texto" && v !== "");
+  // Cuantos filtros hay puestos (la fecha y su hora cuentan como uno: "cuando")
+  const activos = [
+    textoEscrito.trim(),
+    filtros.deporte,
+    filtros.modalidad,
+    filtros.ciudad,
+    filtros.zona,
+    filtros.fecha || filtros.hora,
+    filtros.precio_max,
+    filtros.techada,
+    filtros.orden !== "precio" && filtros.orden,
+  ].filter(Boolean).length;
+  const enMasFiltros = [filtros.precio_max, filtros.techada, filtros.zona, filtros.orden !== "precio"].filter(Boolean).length;
+  const hayFiltros = activos > 0;
   const limpiar = () => {
     setTextoEscrito("");
     setFiltros(FILTROS_VACIOS);
+    setEligiendoDia(false);
   };
+
+  // "Cuando": Hoy / Manana / Elegir dia (la API necesita fecha Y hora para filtrar por disponibilidad)
+  const hoy = fechaLocal();
+  const manana = fechaLocal(1);
+  const [eligiendoDia, setEligiendoDia] = useState(false);
+  const modoDia = !filtros.fecha && !eligiendoDia ? "" : filtros.fecha === hoy ? "hoy" : filtros.fecha === manana ? "manana" : "otro";
+  const elegirDia = (modo) => {
+    setEligiendoDia(modo === "otro");
+    cambiar("fecha", modo === "hoy" ? hoy : modo === "manana" ? manana : "");
+    if (!modo) cambiar("hora", "");
+  };
+
+  // Panel "Mas filtros": se abre y cierra con teclado; Esc lo cierra y el foco vuelve al boton
+  const [masAbierto, setMasAbierto] = useState(false);
+  const botonMasRef = useRef(null);
+  const cerrarMas = () => {
+    setMasAbierto(false);
+    botonMasRef.current?.focus();
+  };
+  const zonasDisponibles = filtros.ciudad
+    ? [...(conteos.zonas[filtros.ciudad] ?? [])].sort()
+    : [...new Set(Object.values(conteos.zonas).flatMap((z) => [...z]))].sort();
   const verHora = (hora) => {
     setFiltros((f) => ({ ...f, fecha: fechaNoche, hora: String(hora) }));
     buscadorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
@@ -324,102 +362,181 @@ export default function Inicio() {
       <section ref={buscadorRef} className="mx-auto max-w-6xl scroll-mt-4 px-4 py-12 sm:px-6">
         <h2 className="titular text-5xl">Todas las canchas</h2>
 
-        <div className="mt-6 rounded-pieza border border-linea bg-superficie p-3 sm:p-4">
-          <label className="flex h-12 items-center gap-3 rounded-pieza bg-hundido px-4 focus-within:ring-2 focus-within:ring-acento">
-            <Search className="size-5 shrink-0 text-tinta-tenue" strokeWidth={1.75} />
+        <div className="mt-6 rounded-panel border border-linea bg-superficie p-3 sm:p-4">
+          <label className="flex h-12 items-center gap-3 rounded-pieza bg-hundido px-4 focus-within:ring-2 focus-within:ring-tiza">
+            <Search className="size-5 shrink-0 text-tinta-tenue" strokeWidth={1.75} aria-hidden="true" />
             <span className="sr-only">Buscar</span>
             <input
               value={textoEscrito}
               onChange={(e) => setTextoEscrito(e.target.value)}
               placeholder="Busca por cancha, sede o barrio: golazo, chapinero, coliseo"
-              className="w-full bg-transparent text-[15px] outline-none placeholder:text-tinta-tenue"
+              className="w-full min-w-0 bg-transparent text-[15px] outline-none placeholder:text-tinta-tenue"
             />
             {textoEscrito && (
-              <button type="button" onClick={() => setTextoEscrito("")} aria-label="Borrar texto">
+              <button type="button" onClick={() => setTextoEscrito("")} aria-label="Borrar texto" className="p-1">
                 <X className="size-4 text-tinta-tenue" />
               </button>
             )}
           </label>
 
-          {/* Deportes con cuantas canchas hay de cada uno */}
-          <div className="mt-3 flex flex-wrap items-center gap-2">
-            <Chip activo={!filtros.deporte} onClick={() => setFiltros((f) => ({ ...f, deporte: "", modalidad: "" }))}>
-              Todos los deportes
+          {/* Filtros principales: chips (se prenden y se apagan; aria-pressed) */}
+          <GrupoFiltro titulo="Deporte">
+            <Chip neutro activo={!filtros.deporte} onClick={() => setFiltros((f) => ({ ...f, deporte: "", modalidad: "" }))}>
+              Todos
             </Chip>
             {deportes.map((d) => (
               <Chip
                 key={d._id}
                 activo={filtros.deporte === d.nombre}
-                onClick={() =>
-                  setFiltros((f) => ({ ...f, deporte: f.deporte === d.nombre ? "" : d.nombre, modalidad: "" }))
-                }
+                conteo={conteos.porDeporte[d.nombre] ?? 0}
+                onClick={() => setFiltros((f) => ({ ...f, deporte: f.deporte === d.nombre ? "" : d.nombre, modalidad: "" }))}
               >
                 {d.nombre}
-                <span className="cifras ml-1.5 opacity-60">{conteos.porDeporte[d.nombre] ?? ""}</span>
               </Chip>
             ))}
-          </div>
+          </GrupoFiltro>
           {modalidades.length > 0 && (
-            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-linea pt-2">
+            <GrupoFiltro titulo="Modalidad">
               {modalidades.map((m) => (
                 <Chip
                   key={m.nombre}
-                  pequeno
                   activo={filtros.modalidad === m.nombre}
                   onClick={() => cambiar("modalidad", filtros.modalidad === m.nombre ? "" : m.nombre)}
                 >
                   {m.nombre}, {m.jugadores} jugadores
                 </Chip>
               ))}
+            </GrupoFiltro>
+          )}
+          <GrupoFiltro titulo="Ciudad">
+            <Chip neutro activo={!filtros.ciudad} onClick={() => setFiltros((f) => ({ ...f, ciudad: "", zona: "" }))}>
+              Todas
+            </Chip>
+            {conteos.ciudades.map((c) => (
+              <Chip
+                key={c}
+                activo={filtros.ciudad === c}
+                onClick={() => setFiltros((f) => ({ ...f, ciudad: f.ciudad === c ? "" : c, zona: "" }))}
+              >
+                {c}
+              </Chip>
+            ))}
+          </GrupoFiltro>
+          <GrupoFiltro titulo="Cuándo">
+            <Chip neutro activo={modoDia === ""} onClick={() => elegirDia("")}>
+              Cualquier día
+            </Chip>
+            <Chip activo={modoDia === "hoy"} onClick={() => elegirDia(modoDia === "hoy" ? "" : "hoy")}>
+              Hoy
+            </Chip>
+            <Chip activo={modoDia === "manana"} onClick={() => elegirDia(modoDia === "manana" ? "" : "manana")}>
+              Mañana
+            </Chip>
+            <Chip activo={modoDia === "otro"} onClick={() => elegirDia(modoDia === "otro" ? "" : "otro")}>
+              Elegir día
+            </Chip>
+          </GrupoFiltro>
+          {modoDia !== "" && (
+            <div className="mt-3 flex flex-wrap items-end gap-3 rounded-pieza bg-hundido p-3">
+              {modoDia === "otro" && (
+                <Campo etiqueta="Día">
+                  <input
+                    type="date"
+                    min={hoy}
+                    value={filtros.fecha}
+                    onChange={(e) => cambiar("fecha", e.target.value)}
+                    className="h-10 rounded-pieza border border-linea-fuerte bg-superficie px-2 text-sm text-tinta"
+                  />
+                </Campo>
+              )}
+              <Campo etiqueta="Libre a las" className="min-w-40">
+                <Selector valor={filtros.hora} onCambio={(v) => cambiar("hora", v)} aria-label="Libre a las">
+                  <option value="">Elige la hora</option>
+                  {HORAS_FILTRO.map((h) => (
+                    <option key={h} value={h}>
+                      {nombreHora(h)}
+                    </option>
+                  ))}
+                </Selector>
+              </Campo>
+              {(!filtros.fecha || filtros.hora === "") && (
+                <p className="pb-2.5 text-sm text-tinta-suave">Elige día y hora para ver solo las canchas libres.</p>
+              )}
             </div>
           )}
 
-          <div className="mt-3 grid grid-cols-2 gap-2 border-t border-linea pt-3 sm:grid-cols-3 lg:grid-cols-6">
-            <Selector etiqueta="Ciudad" valor={filtros.ciudad} onChange={(v) => cambiar("ciudad", v)}>
-              <option value="">Todas</option>
-              {conteos.ciudades.map((c) => (
-                <option key={c}>{c}</option>
-              ))}
-            </Selector>
-            <Selector etiqueta="Precio por hora" valor={filtros.precio_max} onChange={(v) => cambiar("precio_max", v)}>
-              <option value="">Cualquiera</option>
-              {[70000, 90000, 120000, 160000].map((p) => (
-                <option key={p} value={p}>
-                  Hasta {pesos(p)}
-                </option>
-              ))}
-            </Selector>
-            <Selector etiqueta="Techo" valor={filtros.techada} onChange={(v) => cambiar("techada", v)}>
-              <option value="">Da igual</option>
-              <option value="true">Techada</option>
-              <option value="false">Al aire libre</option>
-            </Selector>
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-tinta-suave">Día</span>
-              <input
-                type="date"
-                min={fechaLocal()}
-                value={filtros.fecha}
-                onChange={(e) => cambiar("fecha", e.target.value)}
-                className="h-10 rounded-pieza border border-linea-fuerte bg-superficie px-2 text-sm"
-              />
-            </label>
-            <Selector etiqueta="Libre a las" valor={filtros.hora} onChange={(v) => cambiar("hora", v)}>
-              <option value="">Cualquier hora</option>
-              {HORAS_FILTRO.map((h) => (
-                <option key={h} value={h}>
-                  {nombreHora(h)}
-                </option>
-              ))}
-            </Selector>
-            <Selector etiqueta="Ordenar" valor={filtros.orden} onChange={(v) => cambiar("orden", v)}>
-              <option value="precio">Más baratas primero</option>
-              <option value="nombre">Por sede</option>
-            </Selector>
+          {/* Barra: Mas filtros, contador y Limpiar todo */}
+          <div className="mt-4 flex flex-wrap items-center gap-x-4 gap-y-2 border-t border-linea pt-3">
+            <button
+              ref={botonMasRef}
+              type="button"
+              aria-expanded={masAbierto}
+              aria-controls="mas-filtros"
+              onClick={() => (masAbierto ? cerrarMas() : setMasAbierto(true))}
+              className="inline-flex h-10 items-center gap-2 rounded-pieza px-2 text-sm font-medium text-tinta hover:bg-hundido"
+            >
+              <SlidersHorizontal className="size-4" strokeWidth={1.75} aria-hidden="true" />
+              Más filtros
+              {enMasFiltros > 0 && (
+                <span className="cifras rounded-full bg-tinta px-1.5 text-xs text-fondo">{enMasFiltros}</span>
+              )}
+              <ChevronDown className={`size-4 transition-transform duration-150 ${masAbierto ? "rotate-180" : ""}`} aria-hidden="true" />
+            </button>
+            <p className="ml-auto text-sm text-tinta-suave" aria-live="polite">
+              {activos === 0 ? "Sin filtros" : activos === 1 ? "1 filtro activo" : `${activos} filtros activos`}
+            </p>
+            {hayFiltros && (
+              <Boton variante="fantasma" tamano="sm" icono={RotateCcw} onClick={limpiar}>
+                Limpiar todo
+              </Boton>
+            )}
           </div>
-          {(filtros.fecha && filtros.hora === "") || (!filtros.fecha && filtros.hora !== "") ? (
-            <p className="mt-2 text-sm text-alerta">Elige día y hora para ver solo las canchas libres.</p>
-          ) : null}
+          {masAbierto && (
+            <div
+              id="mas-filtros"
+              role="region"
+              aria-label="Más filtros"
+              onKeyDown={(e) => e.key === "Escape" && cerrarMas()}
+              className="mt-2 grid gap-3 rounded-pieza bg-hundido p-3 sm:grid-cols-2 lg:grid-cols-4"
+            >
+              <Campo etiqueta="Precio por hora">
+                <Selector valor={filtros.precio_max} onCambio={(v) => cambiar("precio_max", v)} autoFocus>
+                  <option value="">Cualquiera</option>
+                  {[70000, 90000, 120000, 160000].map((p) => (
+                    <option key={p} value={p}>
+                      Hasta {pesos(p)}
+                    </option>
+                  ))}
+                </Selector>
+              </Campo>
+              <Campo etiqueta="Techo">
+                <Selector valor={filtros.techada} onCambio={(v) => cambiar("techada", v)}>
+                  <option value="">Da igual</option>
+                  <option value="true">Techada</option>
+                  <option value="false">Al aire libre</option>
+                </Selector>
+              </Campo>
+              <Campo etiqueta={filtros.ciudad ? `Zona de ${filtros.ciudad}` : "Zona"}>
+                <Selector valor={filtros.zona} onCambio={(v) => cambiar("zona", v)}>
+                  <option value="">Todas</option>
+                  {zonasDisponibles.map((z) => (
+                    <option key={z}>{z}</option>
+                  ))}
+                </Selector>
+              </Campo>
+              <Campo etiqueta="Ordenar">
+                <Selector valor={filtros.orden} onCambio={(v) => cambiar("orden", v)}>
+                  <option value="precio">Más baratas primero</option>
+                  <option value="nombre">Por sede</option>
+                </Selector>
+              </Campo>
+              <div className="flex justify-end sm:col-span-2 lg:col-span-4">
+                <Boton tamano="sm" onClick={cerrarMas}>
+                  Listo
+                </Boton>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* ---------------- Resultados ---------------- */}
@@ -440,16 +557,6 @@ export default function Inicio() {
               </>
             )}
           </p>
-          {hayFiltros && (
-            <button
-              type="button"
-              onClick={limpiar}
-              className="inline-flex items-center gap-1.5 text-sm text-tinta-suave hover:text-tinta"
-            >
-              <RotateCcw className="size-3.5" />
-              Quitar filtros
-            </button>
-          )}
         </div>
 
         <div className={`mt-4 transition-opacity duration-150 ${cargando && resultado ? "opacity-60" : ""}`}>
@@ -458,17 +565,15 @@ export default function Inicio() {
           ) : !resultado ? (
             <Esqueleto />
           ) : resultado.resultados.length === 0 ? (
-            <div className="rounded-pieza border border-dashed border-linea-fuerte px-6 py-14 text-center">
-              <p className="titular text-3xl">Ninguna cancha coincide</p>
-              <p className="mt-2 text-tinta-suave">Prueba con otra hora, otra ciudad o menos filtros.</p>
-              <button
-                type="button"
-                onClick={limpiar}
-                className="mt-5 h-10 rounded-pieza bg-tinta px-4 text-sm font-semibold text-fondo hover:opacity-85"
-              >
-                Ver todas las canchas
-              </button>
-            </div>
+            <EstadoVacio
+              titulo="Ninguna cancha coincide"
+              texto="Prueba con otra hora, otra zona o menos filtros."
+              accion={
+                <Boton variante="principal" icono={RotateCcw} onClick={limpiar}>
+                  Quitar filtros
+                </Boton>
+              }
+            />
           ) : (
             <>
               <div className="space-y-6">
@@ -523,37 +628,13 @@ export default function Inicio() {
 
 /* ---------------- Piezas ---------------- */
 
-function Chip({ activo, pequeno, onClick, children }) {
+// Un grupo de chips con su nombre a la izquierda (o arriba en celular)
+function GrupoFiltro({ titulo, children }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={activo}
-      className={`inline-flex items-center rounded-full border transition-colors duration-150 ${
-        pequeno ? "h-7 px-3 text-xs" : "h-9 px-4 text-sm font-medium"
-      } ${
-        activo
-          ? "border-tinta bg-tinta text-fondo"
-          : "border-linea-fuerte text-tinta-suave hover:border-tinta hover:text-tinta"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Selector({ etiqueta, valor, onChange, children }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-tinta-suave">{etiqueta}</span>
-      <select
-        value={valor}
-        onChange={(e) => onChange(e.target.value)}
-        className="h-10 rounded-pieza border border-linea-fuerte bg-superficie px-2 text-sm"
-      >
-        {children}
-      </select>
-    </label>
+    <div role="group" aria-label={titulo} className="mt-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:gap-4">
+      <p className="w-20 shrink-0 pt-2 text-xs font-medium text-tinta-suave">{titulo}</p>
+      <div className="flex min-w-0 flex-wrap gap-2">{children}</div>
+    </div>
   );
 }
 

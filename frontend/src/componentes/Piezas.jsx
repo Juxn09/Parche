@@ -33,7 +33,9 @@ export function Boton({ variante = "secundario", tamano = "md", icono: Icono, ca
 
 /* ============================== Chip (filtros) ============================== */
 // Un chip FILTRA: se prende y se apaga (aria-pressed). Las pestañas, en cambio, cambian de sección.
-export function Chip({ activo = false, conteo, onClick, children, className = "" }) {
+// neutro: para la opcion "sin filtro" (Todos, Todas, Cualquier dia). Activa se ve en tinta, no en peto:
+// asi el naranja solo aparece cuando la persona eligio un filtro de verdad.
+export function Chip({ activo = false, neutro = false, conteo, onClick, children, className = "" }) {
   return (
     <button
       type="button"
@@ -41,11 +43,13 @@ export function Chip({ activo = false, conteo, onClick, children, className = ""
       onClick={onClick}
       className={`inline-flex h-9 items-center gap-1.5 rounded-full border px-3.5 text-sm transition-colors duration-150 ${
         activo
-          ? "border-acento bg-acento font-semibold text-acento-tinta"
+          ? neutro
+            ? "border-tinta bg-tinta font-semibold text-fondo"
+            : "border-acento bg-acento font-semibold text-acento-tinta"
           : "border-linea-fuerte text-tinta-suave hover:border-tinta hover:text-tinta"
       } ${className}`}
     >
-      {activo && <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />}
+      {activo && !neutro && <Check className="size-3.5" strokeWidth={2.5} aria-hidden="true" />}
       {children}
       {conteo !== undefined && <span className="cifras opacity-60">{conteo}</span>}
     </button>
