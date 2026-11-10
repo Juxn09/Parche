@@ -55,3 +55,16 @@ export function horasParaEmpezar(fecha, hora) {
 export function unirConY(lista) {
   return lista.length <= 1 ? lista.join("") : `${lista.slice(0, -1).join(", ")} y ${lista.at(-1)}`;
 }
+
+// [19, 20, 21] -> "7 · 8 · 9 p. m."; [10, 11, 13] -> "10 · 11 a. m. · 1 p. m." (el sufijo va una vez por tramo)
+export function horasCompactas(horas) {
+  const tramos = [];
+  for (const h of horas) {
+    const tramo = h < 12 ? "a. m." : h === 12 ? "m." : "p. m.";
+    const numero = h > 12 ? h - 12 : h;
+    const ultimo = tramos.at(-1);
+    if (ultimo && ultimo.tramo === tramo && tramo !== "m.") ultimo.numeros.push(numero);
+    else tramos.push({ tramo, numeros: [numero] });
+  }
+  return tramos.map((t) => `${t.numeros.join(" · ")} ${t.tramo}`).join(" · ");
+}

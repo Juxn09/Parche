@@ -258,7 +258,7 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 
 **Esto está probado automáticamente**: 6 reservas simultáneas de la misma hora dan exactamente un 201 y cinco 409 (ver la sección 8.1).
 
-`[[EVIDENCIA: salida de "python -m pytest" con 30 pruebas aprobadas]]`
+`[[EVIDENCIA: salida de "python -m pytest" con 54 pruebas aprobadas]]`
 
 **Seguridad:**
 - Las contraseñas se guardan con **bcrypt**: hash lento con sal, que no se puede revertir.
@@ -277,7 +277,7 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 
 ### 8.1 Pruebas automáticas
 
-30 pruebas con **pytest** (`backend/pruebas/`) verifican las reglas críticas contra un **MongoDB 7.0 real y temporal**, levantado con `pymongo-inmemory`. Nunca tocan Atlas: un candado detiene todo si la base no es local o no se llama `parche_pruebas`. Cada prueba crea las colecciones con **los mismos** `$jsonSchema` e índices de `CrearColecciones.py`.
+54 pruebas con **pytest** (`backend/pruebas/`) verifican las reglas críticas contra un **MongoDB 7.0 real y temporal**, levantado con `pymongo-inmemory`. Nunca tocan Atlas: un candado detiene todo si la base no es local o no se llama `parche_pruebas`. Cada prueba crea las colecciones con **los mismos** `$jsonSchema` e índices de `CrearColecciones.py`.
 
 | Grupo | Qué se comprueba |
 |---|---|
@@ -288,6 +288,8 @@ Cada colección tiene un validador con `validationLevel: "strict"` y `validation
 | Moderación | Las canchas de un propietario inactivo no aparecen ni se reservan; rechazar una sede con reservas pide confirmación |
 | Datos | `finalizar_reservas_pasadas` es idempotente; `$jsonSchema` rechaza un documento inválido insertado directamente; un partido finalizado o cancelado rechaza unirse, salir y cancelar con un mensaje claro |
 | Reportes | El reporte de deportes desempata alfabéticamente y su orden es estable |
+| Libre hoy | Horas libres desde ahora (hora de Bogotá) hasta el cierre; casos de borde de cierre, sede cerrada, sin horas e ids inválidos |
+| Paginación | "Cargar más" no repite ni pierde canchas, con empates de precio y nombre, en los dos órdenes y con filtros |
 
 **¿Cómo sabemos que las pruebas sirven?** Se hizo una prueba de mutación: se quitó temporalmente la unicidad del índice `ux_cancha_franja_activa` y fallaron las 3 pruebas de cruce. Al restaurarlo, volvieron a pasar.
 
@@ -314,6 +316,24 @@ Todos los reportes se calculan con **Aggregation Pipeline** dentro de MongoDB (`
 | 9 | ¿Cómo crecen las reservas mes a mes? | Admin | `$group` con `$cond` → `$sort` | Tendencia de la plataforma |
 
 **Cambio documentado en un reporte (10 de noviembre de 2026).** Al comparar los reportes antes y después de finalizar reservas, el reporte 6 salió una vez con **otro orden pero el mismo contenido**. La causa: `$sort: {reservas: -1}` no garantiza el orden entre modalidades **empatadas**. Se agregó un desempate alfabético, `$sort: {reservas: -1, modalidad: 1}`; es la única edición hecha a los pipelines de `Reportes.py`. La prueba `PruebaReportes.py` lo verifica: con dos modalidades empatadas, el orden es siempre el mismo en 5 consultas seguidas. Al quitar el desempate, la prueba falla.
+
+**"Libre hoy" en la lista (`GET /api/canchas/libres-hoy?ids=...`).**
+- **Qué hace:** devuelve las horas que quedan libres hoy en cada cancha, desde la hora actual de Bogotá (`ahora()`, UTC-5) hasta el cierre de su sede.
+- **Límites:** acepta como máximo 50 ids (una página de la lista). Si se pasan más, o algún id es inválido, responde 400 con un mensaje claro.
+- **Una sola consulta** sobre `reservas` para todas las canchas: filtra por `cancha_id ∈ ids`, `franjas ∈ franjas de hoy` y `estado: "activa"`. Son exactamente los campos del índice único `ux_cancha_franja_activa`.
+- **`explain("executionStats")`, solo lectura, contra Atlas el 10 de noviembre:**
+
+  | Medida | Con el índice | Sin índice (`$natural`) |
+  |---|---|---|
+  | Plan | `IXSCAN` sobre `ux_cancha_franja_activa` | Recorrido completo |
+  | Claves examinadas | 27 | — |
+  | Documentos examinados | **5** de 964 | 964 |
+  | Tiempo | 9 ms | — |
+
+- **Pruebas:** 15 casos de borde. Entre ellos: cerca del cierre, en la hora exacta, después del cierre, sede cerrada hoy, cancha sin horas, ids inválidos, vacíos, repetidos o de más, y que la fecha usada sea la de Bogotá y no la de UTC.
+- **Si falla o tarda**, la lista se muestra igual, sin esa fila. Esto se comprobó en el navegador.
+
+**Paginación ("Cargar más").** La lista pide páginas de 12 con `saltar`. Al orden de `GET /api/canchas` se le agregó `_id` como último criterio. Sin él, dos canchas empatadas en precio y nombre (por ejemplo, las dos "Cancha 2" de $160.000) podían cambiar de lugar entre páginas, y "Cargar más" repetiría una y perdería otra. Las pruebas de `PruebaPaginacion.py` recorren la lista página por página con distintos tamaños, órdenes y filtros, y comprueban que no se repita ni se pierda ninguna cancha. Al quitar el desempate, fallan 8 de 9.
 
 **Resultados con los datos de prueba** (8 semanas):
 - la hora más llena es el sábado a las 7 p. m., con 22,9 %;

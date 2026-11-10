@@ -1,14 +1,15 @@
 // Pagina de inicio: "¿Juegas hoy?"
 // La portada es una cancha de noche con la agenda REAL de las horas pico (6 a 10 p. m.):
 // cuantas canchas quedan libres en cada hora, consultando la API.
-import { AlertCircle, RotateCcw, Search, Sun, Warehouse, X } from "lucide-react";
+import { AlertCircle, Clock, MapPin, RotateCcw, Search, Sun, Warehouse, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router";
 import Cupos from "../componentes/Cupos.jsx";
 import LineasCancha from "../componentes/LineasCancha.jsx";
 import Pictograma from "../componentes/Pictograma.jsx";
+import { Boton, InsigniaPico } from "../componentes/Piezas.jsx";
 import { api, pesos } from "../servicios/Api.js";
-import { SUPERFICIES, fechaLocal, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
+import { SUPERFICIES, fechaLocal, horasCompactas, nombreDia, nombreHora, unirConY } from "../servicios/Catalogo.js";
 
 const HORAS_NOCHE = [18, 19, 20, 21, 22];
 const HORAS_FILTRO = Array.from({ length: 17 }, (_, i) => i + 6); // 6 a. m. a 10 p. m.
@@ -23,6 +24,28 @@ const FILTROS_VACIOS = {
   techada: "",
   orden: "precio",
 };
+
+const PAGINA = 12; // canchas por pagina ("Cargar mas" trae las siguientes 12)
+
+// Los parametros de busqueda que entiende GET /api/canchas
+function parametrosDe(filtros) {
+  const p = { ...filtros };
+  if (!(filtros.fecha && filtros.hora !== "")) {
+    delete p.fecha; // la disponibilidad necesita fecha Y hora
+    delete p.hora;
+  }
+  return p;
+}
+
+// Agrupa por sede conservando el orden de aparicion (la sede de la cancha mas barata va primero)
+function agruparPorSede(canchas) {
+  const grupos = new Map();
+  for (const c of canchas) {
+    if (!grupos.has(c.sede_id)) grupos.set(c.sede_id, { id: c.sede_id, sede: c.sede, canchas: [] });
+    grupos.get(c.sede_id).canchas.push(c);
+  }
+  return [...grupos.values()];
+}
 
 export default function Inicio() {
   // Despues de las 9 p. m. ya no queda "esta noche": la portada muestra la de manana
@@ -40,7 +63,18 @@ export default function Inicio() {
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState(null);
   const [intento, setIntento] = useState(0);
+  const [cargandoMas, setCargandoMas] = useState(false);
+  const [libresHoy, setLibresHoy] = useState({}); // id de cancha -> { libres, motivo }
   const buscadorRef = useRef(null);
+  const busquedaActual = useRef(""); // para descartar respuestas de filtros viejos
+
+  // "Libre hoy" es un extra: si falla o tarda, la lista se muestra igual, sin esa fila
+  function pedirLibresHoy(canchas) {
+    if (!canchas.length) return;
+    api("/api/canchas/libres-hoy", { parametros: { ids: canchas.map((c) => c._id).join(",") } })
+      .then((r) => setLibresHoy((previo) => ({ ...previo, ...r.canchas })))
+      .catch(() => {});
+  }
 
   // 1. Catalogo de deportes y todas las canchas (para conteos y listas de filtros)
   useEffect(() => {
@@ -88,23 +122,44 @@ export default function Inicio() {
   }, [textoEscrito]);
 
   // 4. Cada vez que cambia un filtro, se consulta la API
+  //    Al cambiar un filtro se empieza de cero (saltar = 0); "Cargar mas" agrega la pagina siguiente.
   useEffect(() => {
     let vigente = true;
+    busquedaActual.current = JSON.stringify(parametrosDe(filtros));
     setCargando(true);
     setError(null);
-    const parametros = { ...filtros, limite: 50 };
-    if (!(filtros.fecha && filtros.hora !== "")) {
-      delete parametros.fecha; // la disponibilidad necesita fecha Y hora
-      delete parametros.hora;
-    }
-    api("/api/canchas", { parametros })
-      .then((datos) => vigente && setResultado(datos))
+    api("/api/canchas", { parametros: { ...parametrosDe(filtros), limite: PAGINA, saltar: 0 } })
+      .then((datos) => {
+        if (!vigente) return;
+        setResultado(datos);
+        pedirLibresHoy(datos.resultados);
+      })
       .catch((e) => vigente && setError(e.message))
       .finally(() => vigente && setCargando(false));
     return () => {
       vigente = false;
     };
   }, [filtros, intento]);
+
+  async function cargarMas() {
+    const firma = busquedaActual.current;
+    setCargandoMas(true);
+    try {
+      const datos = await api("/api/canchas", {
+        parametros: { ...parametrosDe(filtros), limite: PAGINA, saltar: resultado.resultados.length },
+      });
+      if (busquedaActual.current !== firma) return; // el filtro cambio mientras cargaba: se descarta
+      setResultado((previo) => {
+        const vistos = new Set(previo.resultados.map((c) => c._id)); // defensa extra contra repetidos
+        return { ...datos, resultados: [...previo.resultados, ...datos.resultados.filter((c) => !vistos.has(c._id))] };
+      });
+      pedirLibresHoy(datos.resultados);
+    } catch (e) {
+      setError(e.message);
+    } finally {
+      setCargandoMas(false);
+    }
+  }
 
   const conteos = useMemo(() => {
     const porDeporte = {};
@@ -412,19 +467,45 @@ export default function Inicio() {
               </button>
             </div>
           ) : (
-            <ul className="divide-y divide-linea overflow-hidden rounded-pieza border border-linea bg-superficie">
-              {resultado.resultados.map((cancha) => (
-                <FilaCancha
-                  key={cancha._id}
-                  cancha={cancha}
-                  destino={
-                    horaElegida !== null || (filtros.fecha && filtros.hora !== "")
-                      ? `/canchas/${cancha._id}?fecha=${filtros.fecha}&hora=${filtros.hora}`
-                      : `/canchas/${cancha._id}`
-                  }
-                />
-              ))}
-            </ul>
+            <>
+              <div className="space-y-6">
+                {agruparPorSede(resultado.resultados).map(({ id, sede, canchas }) => (
+                  <section key={id} aria-label={`${sede.nombre}, ${sede.zona}`}>
+                    <h3 className="flex flex-wrap items-baseline gap-x-2 px-1 pb-2">
+                      <span className="titular text-2xl">{sede.nombre}</span>
+                      <span className="inline-flex items-center gap-1 text-sm text-tinta-suave">
+                        <MapPin className="size-3.5" strokeWidth={1.75} aria-hidden="true" />
+                        {sede.zona}, {sede.ciudad}
+                      </span>
+                    </h3>
+                    <ul className="divide-y divide-linea overflow-hidden rounded-panel border border-linea bg-superficie">
+                      {canchas.map((cancha) => (
+                        <FilaCancha
+                          key={cancha._id}
+                          cancha={cancha}
+                          libres={libresHoy[cancha._id]}
+                          destino={
+                            horaElegida !== null || (filtros.fecha && filtros.hora !== "")
+                              ? `/canchas/${cancha._id}?fecha=${filtros.fecha}&hora=${filtros.hora}`
+                              : `/canchas/${cancha._id}`
+                          }
+                        />
+                      ))}
+                    </ul>
+                  </section>
+                ))}
+              </div>
+              <div className="mt-6 flex flex-col items-center gap-2">
+                <p className="cifras text-sm text-tinta-suave">
+                  Mostrando {resultado.resultados.length} de {resultado.total}
+                </p>
+                {resultado.resultados.length < resultado.total && (
+                  <Boton onClick={cargarMas} cargando={cargandoMas}>
+                    {cargandoMas ? "Cargando" : "Cargar más canchas"}
+                  </Boton>
+                )}
+              </div>
+            </>
           )}
         </div>
       </section>
@@ -468,39 +549,60 @@ function Selector({ etiqueta, valor, onChange, children }) {
   );
 }
 
-function FilaCancha({ cancha, destino }) {
+// "Libre hoy" en palabras: las primeras 4 horas libres, o por que no hay
+function TextoLibreHoy({ libres }) {
+  if (!libres) return null; // aun no llega o fallo: no se muestra nada (la fila sigue completa)
+  const hay = libres.libres.length > 0;
+  const texto = hay
+    ? horasCompactas(libres.libres.slice(0, 4)) + (libres.libres.length > 4 ? ` y ${libres.libres.length - 4} más` : "")
+    : { cerrada_hoy: "hoy no abre", ya_cerro: "ya cerró por hoy", sin_horas: "no quedan horas" }[libres.motivo];
+  return (
+    <p className="mt-2 inline-flex flex-wrap items-center gap-x-1.5 text-sm">
+      <Clock className={`size-4 ${hay ? "text-tiza" : "text-tinta-tenue"}`} strokeWidth={1.75} aria-hidden="true" />
+      <span className="text-tinta-suave">Libre hoy:</span>
+      <span className={`cifras ${hay ? "font-semibold text-tinta" : "text-tinta-tenue"}`}>{texto}</span>
+    </p>
+  );
+}
+
+function FilaCancha({ cancha, destino, libres }) {
   return (
     <li className="group relative transition-colors duration-150 hover:bg-hundido/60">
-      <Link to={destino} className="grid items-center gap-3 px-4 py-5 sm:grid-cols-[auto_1fr_auto] sm:gap-6 sm:px-6">
-      <Pictograma deporte={cancha.deportes[0]?.deporte} className="hidden w-24 sm:block" />
-      <span className="absolute inset-y-0 left-0 w-1 bg-acento opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
-      <div className="min-w-0">
-        <p className="truncate text-sm text-tinta-suave">
-          {cancha.sede.nombre}, {cancha.sede.zona} ({cancha.sede.ciudad})
-        </p>
-        <p className="titular mt-1 text-[2rem]">{cancha.nombre}</p>
-        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-tinta-suave">
-          {cancha.deportes.map((d) => (
-            <span key={d.modalidad} className="rounded-[4px] bg-hundido px-2 py-0.5 text-tinta">
-              {d.modalidad}
+      <Link to={destino} className="grid items-center gap-3 px-4 py-4 sm:grid-cols-[auto_1fr_auto] sm:gap-6 sm:px-5">
+        <Pictograma deporte={cancha.deportes[0]?.deporte} className="hidden w-20 sm:block" />
+        {/* Al pasar el cursor: linea de tiza a la izquierda (el naranja queda para lo seleccionado) */}
+        <span className="absolute inset-y-0 left-0 w-1 bg-tiza opacity-0 transition-opacity duration-150 group-hover:opacity-100" />
+        <div className="min-w-0">
+          <p className="titular text-[1.9rem]">{cancha.nombre}</p>
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-tinta-suave">
+            {cancha.deportes.map((d) => (
+              <span key={d.modalidad} className="rounded-[4px] bg-hundido px-2 py-0.5 text-tinta">
+                {d.modalidad}
+              </span>
+            ))}
+            <span className="inline-flex items-center gap-1">
+              {cancha.techada ? (
+                <Warehouse className="size-4" strokeWidth={1.75} aria-hidden="true" />
+              ) : (
+                <Sun className="size-4" strokeWidth={1.75} aria-hidden="true" />
+              )}
+              {cancha.techada ? "Techada" : "Al aire libre"}
             </span>
-          ))}
-          <span className="inline-flex items-center gap-1">
-            {cancha.techada ? (
-              <Warehouse className="size-4" strokeWidth={1.75} />
-            ) : (
-              <Sun className="size-4" strokeWidth={1.75} />
-            )}
-            {cancha.techada ? "Techada" : "Al aire libre"}
-          </span>
-          <span>{SUPERFICIES[cancha.superficie]}</span>
+            <span>{SUPERFICIES[cancha.superficie]}</span>
+          </div>
+          <TextoLibreHoy libres={libres} />
         </div>
-      </div>
-      <div className="flex flex-wrap items-baseline gap-x-2 sm:block sm:text-right">
-        <p className="titular cifras text-[2rem]">{pesos(cancha.precio_hora)}</p>
-        <p className="text-sm text-tinta-suave">la hora</p>
-        <p className="cifras text-xs text-tinta-tenue sm:mt-1">{pesos(cancha.precio_hora_pico)} de 6 a 10 p. m.</p>
-      </div>
+        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1 sm:block sm:text-right">
+          <p>
+            <span className="titular cifras text-[1.9rem]">{pesos(cancha.precio_hora)}</span>
+            <span className="ml-1 text-sm text-tinta-suave">la hora</span>
+          </p>
+          <p className="inline-flex items-center gap-1.5 text-sm sm:mt-1 sm:justify-end">
+            <InsigniaPico />
+            <span className="cifras font-medium text-tinta">{pesos(cancha.precio_hora_pico)}</span>
+            <span className="text-tinta-tenue">6 a 10 p. m.</span>
+          </p>
+        </div>
       </Link>
     </li>
   );
