@@ -9,7 +9,7 @@ Integrantes: Juan Camilo Moreno, Marshall Robinson y Carlos Palacios.
 
 | | |
 |---|---|
-| Aplicación | `[[URL de Vercel]]` |
+| Aplicación | https://parche-six.vercel.app |
 | API (documentación interactiva) | https://parche-akv4.onrender.com/docs |
 | Documento técnico | [docs/DocumentoTecnico.md](docs/DocumentoTecnico.md) |
 | Modelo de datos | [docs/ModeloDeDatos.md](docs/ModeloDeDatos.md) |

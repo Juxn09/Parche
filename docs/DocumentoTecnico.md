@@ -8,7 +8,7 @@
 | Enlace | Dirección |
 |---|---|
 | Repositorio | https://github.com/Juxn09/Parche |
-| Aplicación (interfaz) | `[[PEGAR URL DE VERCEL]]` |
+| Aplicación (interfaz) | https://parche-six.vercel.app |
 | API (documentación interactiva) | https://parche-akv4.onrender.com/docs |
 | Estado de la API | https://parche-akv4.onrender.com/api/salud |
 
