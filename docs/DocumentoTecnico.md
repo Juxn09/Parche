@@ -365,8 +365,8 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E7 | Reserva cruzada rechazada (409) | [Imagen E7](evidencias/E7-ReservaCruzada409.jpg) |
 | E8 | Panel del propietario: agenda y reportes | [E8a](evidencias/E8a-PanelPropietarioAgenda.jpg) · [E8b](evidencias/E8b-PanelPropietarioReportes.jpg) |
 | E9 | Panel del admin: aprobación de sede y métricas | [E9a](evidencias/E9a-PanelAdminSedes.jpg) · [E9b](evidencias/E9b-PanelAdminMetricas.jpg) |
-| E10 | API desplegada en Render (`/api/salud`) | `[[CAPTURA]]` |
-| E11 | Interfaz desplegada en Vercel, abierta desde un celular | `[[CAPTURA]]` |
+| E10 | API desplegada en Render (`/api/salud`) | [Imagen E10](evidencias/E10-RenderSalud.png) · panel de Render pendiente |
+| E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · panel de Vercel pendiente |
 
 **E1 y E3. Colecciones e índices en Atlas** (consulta de solo lectura con PyMongo):
 
@@ -410,6 +410,12 @@ $ git ls-files | grep -c '\.env$'
 ![E9a. Sedes pendientes de aprobación](evidencias/E9a-PanelAdminSedes.jpg)
 
 ![E9b. Métricas de la plataforma](evidencias/E9b-PanelAdminMetricas.jpg)
+
+**E10 y E11. La solución en internet.** `https://parche-akv4.onrender.com/api/salud` responde desde Render con la base `parche` de Atlas y el conteo de documentos de cada colección. La interfaz de `https://parche-six.vercel.app` se ve en un celular (375 px) con los datos reales de la API.
+
+![E10. /api/salud en Render](evidencias/E10-RenderSalud.png)
+
+![E11. La interfaz en Vercel vista en un celular](evidencias/E11-VercelCelular.jpg)
 
 ## 11. Despliegue
 
