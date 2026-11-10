@@ -18,7 +18,7 @@ from app.BaseDatos import a_json, db
 from app.Modelos import BloqueoEntrada, ReservaEntrada
 from app.Seguridad import requiere_rol
 from app.Utilidades import (a_object_id, ahora, franja, horario_del_dia, leer_fecha, momento,
-                            precio_de_hora)
+                            precio_de_hora, propietarios_inactivos)
 
 router = APIRouter(prefix="/api/reservas", tags=["Reservas"])
 solo_cliente = requiere_rol("cliente")
@@ -34,7 +34,8 @@ MINIMO_JUGADORES_PARTIDO_ABIERTO = 4
 # ---------------------------------------------------------------
 def _cancha_reservable(cancha_id: str) -> tuple:
     """Cancha activa de una sede aprobada; si no, 404/409."""
-    cancha = db.canchas.find_one({"_id": a_object_id(cancha_id), "estado": {"$ne": "inactiva"}})
+    cancha = db.canchas.find_one({"_id": a_object_id(cancha_id), "estado": {"$ne": "inactiva"},
+                                  "propietario_id": {"$nin": propietarios_inactivos()}})
     if cancha is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Cancha no encontrada")
     sede = db.sedes.find_one({"_id": cancha["sede_id"], "estado": "aprobada"})
@@ -107,6 +108,8 @@ def crear_reserva(datos: ReservaEntrada, usuario: dict = Depends(solo_cliente)):
     if datos.abierta:
         modalidad = db.deportes.find_one({"modalidades.nombre": datos.modalidad},
                                          {"modalidades.$": 1})
+        if modalidad is None:
+            raise HTTPException(status.HTTP_400_BAD_REQUEST, "Esa modalidad no está en el catálogo de deportes")
         cupos = modalidad["modalidades"][0]["jugadores"]
         if cupos < MINIMO_JUGADORES_PARTIDO_ABIERTO:
             raise HTTPException(status.HTTP_400_BAD_REQUEST,

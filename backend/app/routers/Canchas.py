@@ -11,7 +11,7 @@ from pymongo.errors import OperationFailure
 
 from app.BaseDatos import a_json, db
 from app.Utilidades import (a_object_id, ahora, franja, horario_del_dia, leer_fecha,
-                            momento, precio_de_hora)
+                            momento, precio_de_hora, propietarios_inactivos)
 
 router = APIRouter(prefix="/api/canchas", tags=["Busqueda de canchas"])
 
@@ -74,7 +74,11 @@ def buscar_canchas(
     saltar: int = Query(0, ge=0),
 ):
     """Busca canchas activas de sedes aprobadas, con filtros combinables."""
-    filtro = {"estado": "activa", "sede_id": {"$in": _ids_sedes_aprobadas()}}
+    filtro = {
+        "estado": "activa",
+        "sede_id": {"$in": _ids_sedes_aprobadas()},
+        "propietario_id": {"$nin": propietarios_inactivos()},  # dueño desactivado por el admin
+    }
 
     # deporte y modalidad deben cumplirse en el MISMO elemento de la lista 'deportes'
     if deporte and modalidad:
@@ -117,7 +121,8 @@ def buscar_canchas(
 def detalle_cancha(cancha_id: str):
     """Cancha con los datos completos de su sede (direccion, horario, servicios) usando $lookup."""
     pipeline = [
-        {"$match": {"_id": a_object_id(cancha_id), "estado": {"$ne": "inactiva"}}},
+        {"$match": {"_id": a_object_id(cancha_id), "estado": {"$ne": "inactiva"},
+                    "propietario_id": {"$nin": propietarios_inactivos()}}},
         {"$lookup": {"from": "sedes", "localField": "sede_id", "foreignField": "_id", "as": "sede_completa"}},
         {"$unwind": "$sede_completa"},
         {"$match": {"sede_completa.estado": "aprobada"}},

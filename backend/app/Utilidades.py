@@ -8,6 +8,7 @@ from bson import ObjectId
 from bson.errors import InvalidId
 from fastapi import HTTPException, status
 
+from app.BaseDatos import db
 from app.Config import COLOMBIA
 
 DIAS_SEMANA = ["lunes", "martes", "miercoles", "jueves", "viernes", "sabado", "domingo"]
@@ -50,6 +51,11 @@ def horario_del_dia(sede: dict, dia: date):
         if h["dia"] == nombre:
             return int(h["abre"][:2]), int(h["cierra"][:2])
     return None
+
+
+def propietarios_inactivos() -> list:
+    """Propietarios que el admin desactivo: sus canchas no se muestran ni se pueden reservar."""
+    return db.usuarios.distinct("_id", {"rol": "propietario", "activo": False})
 
 
 def precio_de_hora(cancha: dict, hora: int) -> int:
