@@ -5,6 +5,21 @@
    Sale del mundo real de la cancha sintetica de barrio:
    grama verde, lineas de cal, petos naranja, malla gris y asfalto.
    Todos los colores son variables: el modo oscuro solo cambia valores.
+
+   Tres reglas del sistema:
+   1. La TIZA marca lo activo (pestana actual, linea de la cancha, patron
+      de hora pico). En oscuro es cal blanca; en claro es verde grama,
+      como el marcador sobre la planilla del entrenador.
+   2. El PETO (naranja) solo para lo SELECCIONADO y la ACCION PRINCIPAL.
+      Nada mas lleva naranja: ni la hora pico ni el foco del teclado.
+   3. Los paneles de GRAMA son iguales en claro y en oscuro (tiza sobre grama).
+
+   Escala tipografica (Archivo, una sola familia):
+     portada  clamp(4.2rem, 13vw, 9.5rem) .titular
+     h1       text-6xl .titular   ·  h2 text-4xl .titular  ·  h3 text-xl font-semibold
+     cuerpo   text-[15px]/16px    ·  apoyo text-sm          ·  etiqueta text-xs font-medium
+   Espaciado: la escala de Tailwind (4 px). Grupos relacionados 2-3,
+   bloques 5-6, secciones 10-14.
    --------------------------------------------------------------- */
 :root {
   --fondo: #e7eae4; /* malla */
@@ -24,6 +39,10 @@
   --alerta: #9a5a00;
   --error: #c23a12;
   --calor: #1d5a3c; /* extremo oscuro de la escala de ocupacion (graficas) */
+  --tiza: #1d5a3c; /* en claro, la tiza es verde grama */
+  --tiza-suave: rgb(29 90 60 / 0.32);
+  --foco: #24272c; /* anillo del teclado: asfalto en claro */
+  --sombra-panel: 0 1px 0 rgb(36 39 44 / 0.06), 0 10px 28px -18px rgb(36 39 44 / 0.35);
   color-scheme: light;
 }
 
@@ -43,6 +62,10 @@
     --alerta: #f2a93b;
     --error: #ff7a50;
     --calor: #5cc489; /* en oscuro la escala va de la superficie al verde claro */
+    --tiza: #f4f5ef; /* en oscuro, tiza blanca */
+    --tiza-suave: rgb(244 245 239 / 0.3);
+    --foco: #f4f5ef;
+    --sombra-panel: 0 1px 0 rgb(0 0 0 / 0.25), 0 12px 30px -18px rgb(0 0 0 / 0.7);
     color-scheme: dark;
   }
 }
@@ -65,11 +88,26 @@
   --color-alerta: var(--alerta);
   --color-error: var(--error);
   --color-calor: var(--calor);
+  --color-tiza: var(--tiza);
+  --color-tiza-suave: var(--tiza-suave);
+  --color-foco: var(--foco);
 
   /* Una sola familia (Archivo) en dos anchos: condensada para titulares y cifras */
   --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
 
+  /* Dos radios: controles (botones, campos, chips cuadrados) y paneles */
   --radius-pieza: 6px;
+  --radius-panel: 10px;
+
+  --shadow-panel: var(--sombra-panel);
+
+  /* Movimiento: corto para respuestas, medio para aparecer */
+  --ease-cancha: cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+:root {
+  --duracion-rapida: 150ms;
+  --duracion-media: 300ms;
 }
 
 body {
@@ -106,8 +144,43 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--acento);
+  outline: 2px solid var(--foco);
   outline-offset: 2px;
+}
+
+/* Patron de tiza para la hora pico: rayas diagonales finas, sin naranja */
+.patron-pico {
+  background-image: repeating-linear-gradient(-45deg, var(--tiza-suave) 0 1.5px, transparent 1.5px 6px);
+}
+/* Hora pico en la regleta: linea de tiza punteada arriba (la casilla sigue lisa: invita a reservar).
+   El rayado queda reservado para "ocupado", asi no se confunden. */
+.borde-pico {
+  box-shadow: inset 0 3px 0 -1px transparent;
+  background-image: repeating-linear-gradient(90deg, var(--tiza) 0 6px, transparent 6px 10px);
+  background-size: 100% 3px;
+  background-repeat: no-repeat;
+}
+
+/* Patron de ocupado: rayado gris (la franja ya tiene dueno) */
+.patron-ocupado {
+  background-image: repeating-linear-gradient(135deg, var(--linea-fuerte) 0 5px, transparent 5px 10px);
+}
+
+/* Esqueleto de carga: pulso suave (se apaga con "reducir movimiento") */
+.esqueleto {
+  background: var(--hundido);
+  animation: esqueleto 1.4s ease-in-out infinite;
+}
+@keyframes esqueleto {
+  50% {
+    opacity: 0.55;
+  }
+}
+
+/* Dialogo nativo: fondo de grama oscura translucida */
+dialog::backdrop {
+  background: rgb(20 63 42 / 0.55);
+  backdrop-filter: blur(2px);
 }
 
 /* ---------------------------------------------------------------

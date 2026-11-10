@@ -2,6 +2,7 @@ import { Route, Routes, useLocation } from "react-router";
 import Encabezado from "./componentes/Encabezado.jsx";
 import ErrorPantalla from "./componentes/ErrorPantalla.jsx";
 import Detalle from "./paginas/Detalle.jsx";
+import GuiaPiezas from "./paginas/GuiaPiezas.jsx";
 import Ingresar from "./paginas/Ingresar.jsx";
 import Inicio from "./paginas/Inicio.jsx";
 import MisReservas from "./paginas/MisReservas.jsx";
@@ -28,6 +29,8 @@ export default function App() {
           <Route path="/mis-reservas" element={<MisReservas />} />
           <Route path="/panel" element={<PanelPropietario />} />
           <Route path="/admin" element={<PanelAdmin />} />
+          {/* Guía del sistema de diseño: solo en desarrollo, no existe en producción */}
+          {import.meta.env.DEV && <Route path="/guia" element={<GuiaPiezas />} />}
           <Route path="*" element={<NoEncontrada />} />
         </Routes>
         </ErrorPantalla>
