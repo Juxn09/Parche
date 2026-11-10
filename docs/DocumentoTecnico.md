@@ -378,6 +378,21 @@ Todos los reportes se calculan con **Aggregation Pipeline** dentro de MongoDB (`
 
 **Credenciales:** ninguna contraseña está en el repositorio. Viven en el `.env` local (ignorado por Git) y en los paneles de Render y Vercel.
 
+### 11.1 Cambios a endpoints que ya existían
+
+Durante la evolución (rama `evolucion`) se mantuvo la forma de las respuestas. Cada cambio a un endpoint existente quedó registrado con su motivo y su prueba:
+
+| Endpoint | Cambio | Motivo | Prueba |
+|---|---|---|---|
+| `GET /api/canchas` | Se agregó `("_id", 1)` como **último** criterio de orden. Antes era `precio_hora, nombre` (o `sede.nombre, nombre`); ahora es `precio_hora, nombre, _id`. No cambian los filtros ni la respuesta | MongoDB no garantiza el orden entre documentos empatados. Con `saltar`/`limite`, dos canchas con el mismo precio y nombre (las dos "Cancha 2" de $160.000) podían cambiar de lugar entre páginas, y "Cargar más" repetía una y perdía otra. Con `_id` al final, el orden es único y estable | `PruebaPaginacion.py`: 9 pruebas. Sin el desempate fallan 8. Evidencia: `Evidencias/PruebaCargarMas.txt` |
+| `GET /api/reportes/deportes` | `$sort: {reservas: -1, modalidad: 1}` | Orden estable entre modalidades empatadas. Es la única edición a los pipelines de `Reportes.py` | `PruebaReportes.py` |
+| `POST /api/admin/sedes/{id}/rechazar` | Acepta `confirmar` (por defecto `false`). Si la sede tiene reservas futuras, responde 409 y pide confirmar | No rechazar por accidente una sede con reservas vigentes | `PruebaSeguridad.py` |
+| `POST /api/partidos/{id}/unirse`, `/salir` y `POST /api/reservas/{id}/cancelar` | Mensajes específicos si la reserva está `finalizada` o `cancelada`. "Salir" ya no responde 404 a quien sí está en el partido | Que el motivo del rechazo sea claro | `PruebaPartidos.py` |
+| `GET /api/canchas`, `GET /api/canchas/{id}`, `POST /api/reservas` | Excluyen las canchas de propietarios desactivados | Moderación coherente | `PruebaSeguridad.py` |
+| Todas | Los errores siempre llegan en JSON y en español (422 traducido, 503 si la base no responde) y con CORS | Que la interfaz pueda mostrar el error real | `PruebaSeguridad.py` y pruebas con `TestClient` |
+
+**Endpoints nuevos:** `GET /api/canchas/libres-hoy` y `POST /api/admin/mantenimiento/finalizar-reservas`.
+
 ## 12. Conclusiones
 
 1. **El modelo documental encaja con el negocio.** Embeber el pago y el partido abierto en la reserva permite leer todo en una consulta. Referenciar canchas y usuarios evita documentos que crezcan sin límite.

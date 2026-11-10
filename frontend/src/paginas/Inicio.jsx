@@ -64,6 +64,7 @@ export default function Inicio() {
   const [error, setError] = useState(null);
   const [intento, setIntento] = useState(0);
   const [cargandoMas, setCargandoMas] = useState(false);
+  const [agregadas, setAgregadas] = useState(null); // cuantas trajo el ultimo "Cargar mas"
   const [libresHoy, setLibresHoy] = useState({}); // id de cancha -> { libres, motivo }
   const buscadorRef = useRef(null);
   const busquedaActual = useRef(""); // para descartar respuestas de filtros viejos
@@ -126,6 +127,7 @@ export default function Inicio() {
   useEffect(() => {
     let vigente = true;
     busquedaActual.current = JSON.stringify(parametrosDe(filtros));
+    setAgregadas(null);
     setCargando(true);
     setError(null);
     api("/api/canchas", { parametros: { ...parametrosDe(filtros), limite: PAGINA, saltar: 0 } })
@@ -149,11 +151,12 @@ export default function Inicio() {
         parametros: { ...parametrosDe(filtros), limite: PAGINA, saltar: resultado.resultados.length },
       });
       if (busquedaActual.current !== firma) return; // el filtro cambio mientras cargaba: se descarta
-      setResultado((previo) => {
-        const vistos = new Set(previo.resultados.map((c) => c._id)); // defensa extra contra repetidos
-        return { ...datos, resultados: [...previo.resultados, ...datos.resultados.filter((c) => !vistos.has(c._id))] };
-      });
-      pedirLibresHoy(datos.resultados);
+      const vistos = new Set(resultado.resultados.map((c) => c._id)); // defensa extra contra repetidos
+      const nuevas = datos.resultados.filter((c) => !vistos.has(c._id));
+      setResultado((previo) => ({ ...datos, resultados: [...previo.resultados, ...nuevas] }));
+      // Aviso discreto: como la lista va agrupada por sede, las nuevas pueden quedar en grupos de arriba
+      setAgregadas(nuevas.length);
+      pedirLibresHoy(nuevas);
     } catch (e) {
       setError(e.message);
     } finally {
@@ -496,7 +499,12 @@ export default function Inicio() {
                 ))}
               </div>
               <div className="mt-6 flex flex-col items-center gap-2">
-                <p className="cifras text-sm text-tinta-suave">
+                <p className="cifras text-sm text-tinta-suave" role="status" aria-live="polite">
+                  {agregadas !== null && (
+                    <span className="text-tinta">
+                      {agregadas === 1 ? "Se agregó 1 cancha" : `Se agregaron ${agregadas} canchas`}, ordenadas en su sede.{" "}
+                    </span>
+                  )}
                   Mostrando {resultado.resultados.length} de {resultado.total}
                 </p>
                 {resultado.resultados.length < resultado.total && (
