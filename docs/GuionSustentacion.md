@@ -153,7 +153,7 @@ Debe salir `MongoServerError: Document failed validation`.
 | `PruebaPartidos.py` | 7 | Cupo con uniones simultáneas, cuota, salir, partidos finalizados o cancelados |
 | `PruebaReportes.py` | 1 | Reporte de deportes con desempate estable |
 
-**Demo A6.1 — correr las pruebas.** VS Code, terminal en `backend` (con el `.venv` activo): `python -m pytest` → debe terminar con "54 passed". Tarda unos minutos: la primera vez levanta un MongoDB temporal. (No agregar `-q`: `pytest.ini` ya lo trae y con dos se oculta el resumen.)
+**Demo A6.1 — correr las pruebas.** VS Code, terminal en `backend` (con el `.venv` activo): `python -m pytest` → debe terminar con "54 passed". Tarda unos 2 minutos (levanta un MongoDB temporal). (No agregar `-q`: `pytest.ini` ya lo trae y con dos se oculta el resumen.)
 
 🗣 "Y los errores siempre llegan en JSON y en español: un dato mal enviado da 422 con el campo que falló; si Atlas no responde, 503; sin sesión, 401" (`backend/app/Errores.py`, registrado en `Main.py:37-38`).
 

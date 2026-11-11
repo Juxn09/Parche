@@ -293,7 +293,12 @@ La evidencia está en la sección 10 (E2): Compass conectado a Atlas rechaza un 
 
 **Esto está probado automáticamente**: 6 reservas simultáneas de la misma hora dan exactamente un 201 y cinco 409 (ver la sección 8.1).
 
-`[[EVIDENCIA: salida de "python -m pytest" con 54 pruebas aprobadas]]`
+Salida de `python -m pytest` en `backend` (10 nov 2026):
+
+```text
+......................................................                   [100%]
+54 passed in 117.33s (0:01:57)
+```
 
 **Seguridad:**
 - Las contraseñas se guardan con **bcrypt**: hash lento con sal, que no se puede revertir.
