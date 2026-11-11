@@ -11,7 +11,7 @@
 - La API usa **un solo `MongoClient`** (`backend/app/BaseDatos.py:15`), timeout 8 s.
 - Credenciales: `backend/.env` (ignorado por Git) y variables de Render: `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET`, `FRONTEND_URL`. Vercel: `VITE_API_URL`.
 - Atlas: M0, AWS us-east-1, usuario `parche_app` (solo base `parche`), Network Access `0.0.0.0/0` porque Render no tiene IP fija.
-- Push a `main` → Render y Vercel redespliegan solos.
+- Push a `main` → Vercel compila cada commit; Render redespliega solo si cambió `backend/`.
 
 ## Modelo (D1)
 - **Embebido:** empresa en usuario, horario en sede, modalidades en deporte, pago y partido abierto en reserva, participantes en partido.

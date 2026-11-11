@@ -12,12 +12,12 @@ Estos datos se configuraron en un panel web y no quedaron en el código. Complé
 | 2 | Atlas → Database Access | Confirmar que `parche_app` tiene solo `readWrite` y `dbAdmin` sobre `parche` | ______ |
 | 3 | Atlas → Compass | ¿Con qué usuario se conecta Compass ("Parche Atlas")? | ______ |
 | 4 | Atlas | ¿Hay alertas o copias de seguridad configuradas? (el panel muestra "Backups Inactive") | ______ |
-| 5 | Render | Plan (Free), región del servicio y si el auto-deploy desde `main` está activo | ______ |
+| 5 | Render | Plan **Free**, rama `main` y Auto-Deploy activo (vistos en el panel el 11 nov). Falta: región del servicio | ______ |
 | 6 | Render | Health Check Path configurado (el README dice `/api/salud`) | ______ |
 | 7 | Vercel | Comando de build y carpeta de salida (por defecto del preset Vite: `npm run build` y `dist`) | ______ |
 | 8 | Vercel | Versión de Node.js del proyecto | ______ |
 | 9 | Vercel | Modo exacto de Deployment Protection (Standard, Only Preview…) | ______ |
-| 10 | Vercel | Rama de producción (se espera `main`) y dominio `parche-six.vercel.app` como Production | ______ |
+| 10 | Vercel | Rama de producción `main` y plan Hobby (vistos en el panel el 11 nov). Falta: confirmar `parche-six.vercel.app` en Settings → Domains | ______ |
 | 11 | GitHub | ¿El repositorio es público? ¿Quiénes son colaboradores? | ______ |
 | 12 | Equipo | Alternativas que se descartaron al elegir cada herramienta (donde dice "sin registro") | ______ |
 
@@ -29,7 +29,7 @@ Estos datos se configuraron en un panel web y no quedaron en el código. Complé
 | Navegador → Render (API) | HTTPS, 443; `fetch` con JSON | Token JWT en `Authorization: Bearer` (rutas privadas). La URL sale de `VITE_API_URL` | `frontend/src/servicios/Api.js:24`; variable `VITE_API_URL` en Vercel; CORS con `FRONTEND_URL` en Render | DevTools → Red: peticiones a `parche-akv4.onrender.com` con 200; cabecera `access-control-allow-origin` |
 | Navegador → Google Fonts | HTTPS, 443 | Ninguna | `frontend/index.html:8-15` | DevTools → Red: `fonts.googleapis.com` |
 | Render → Atlas | `mongodb+srv` (DNS SRV) sobre TLS, puerto 27017 | Usuario `parche_app` dentro de `MONGODB_URI` | Variable `MONGODB_URI` en Render; `backend/app/BaseDatos.py:15-21`; Network Access en Atlas | `GET /api/salud` → `"estado": "ok"` |
-| GitHub → Render | Webhook HTTPS (lo gestiona Render) | Conexión de Render con la cuenta de GitHub | Panel de Render (repositorio y rama `main`) | Un push a `main` dispara un despliegue en ~1 min (comprobado el 10 nov 2026) |
+| GitHub → Render | Webhook HTTPS (lo gestiona Render) | Conexión de Render con la cuenta de GitHub | Panel de Render (repositorio y rama `main`, Auto-Deploy) | Un push a `main` que cambia `backend/` dispara un despliegue en ~1 min (comprobado el 10 nov 2026); si solo cambian otras carpetas, Render no redespliega (visto en su panel el 11 nov) |
 | GitHub → Vercel | Webhook HTTPS (lo gestiona Vercel) | Integración de Vercel con GitHub | Panel de Vercel | Cada commit muestra el estado "Vercel" en GitHub (comprobado en la API pública de GitHub) |
 | VS Code → GitHub | Git sobre HTTPS, 443 | Credencial de GitHub del usuario (no está en el repositorio) | Configuración de Git del equipo | `git push origin main` |
 | Compass → Atlas | `mongodb+srv` sobre TLS, 27017 | Usuario de base de datos guardado en la conexión "Parche Atlas" | Compass | Abrir la conexión y ver la base `parche` |
@@ -71,7 +71,7 @@ Estos datos se configuraron en un panel web y no quedaron en el código. Complé
 6. **Cómo se conecta:** recibe HTTPS del navegador (CORS con `FRONTEND_URL`), habla con Atlas por `mongodb+srv`, y GitHub le avisa de cada push.
 7. **Si falla:** la app muestra errores de red; el plan gratuito se duerme tras unos 15 min y la primera petición tarda cerca de un minuto. Se comprueba con `/api/salud`.
 8. **Cómo mostrarlo:** pestaña con `/api/salud`; panel de Render (Events / Logs).
-9. **Pregunta:** "¿Cómo llega un cambio a producción?" → "Push a `main`; Render reconstruye y reinicia solo."
+9. **Pregunta:** "¿Cómo llega un cambio a producción?" → "Push a `main`; si el cambio toca `backend/`, Render reconstruye y reinicia solo."
 
 ### Health check de Render
 1. **Qué es:** una ruta que Render consulta para saber si el servicio está sano.
@@ -115,7 +115,7 @@ Estos datos se configuraron en un panel web y no quedaron en el código. Complé
 6. **Cómo se conecta:** recibe `git push` desde el equipo (HTTPS) y llama por webhook a Render y Vercel.
 7. **Si falla:** no hay despliegues nuevos; lo publicado sigue funcionando.
 8. **Cómo mostrarlo:** la página del repositorio; los estados "Vercel" junto a cada commit.
-9. **Pregunta:** "¿Cómo despliegan?" → "Push a `main`; GitHub avisa y cada plataforma reconstruye."
+9. **Pregunta:** "¿Cómo despliegan?" → "Push a `main`; GitHub avisa: Vercel compila cada commit y Render redespliega cuando cambia el backend."
 
 ### Google Fonts
 1. **Qué es:** el servicio de fuentes tipográficas de Google.
@@ -465,7 +465,7 @@ Chrome sin ventana (exportar PDF y PNG), mermaid (dibujar los diagramas de respa
 | ¿Cómo se conecta la API a Atlas? | PyMongo con un único `MongoClient` y la cadena de `MONGODB_URI`, con el usuario `parche_app` (solo base `parche`) y TLS. `BaseDatos.py:15`. |
 | ¿Qué pasa si cambia la URL de Vercel? | El navegador bloquea las llamadas por CORS hasta poner la nueva URL en `FRONTEND_URL` de Render. También hay que actualizar los enlaces del documento. |
 | ¿Qué pasa si cambia la URL de Render? | Cambiar `VITE_API_URL` en Vercel y volver a desplegar la interfaz (la variable se incrusta al compilar). |
-| ¿Cómo se despliega un cambio? | Commit y push a `main`: Render y Vercel redespliegan solos en uno o dos minutos. |
+| ¿Cómo se despliega un cambio? | Commit y push a `main`: Vercel compila cada commit; Render redespliega solo si cambió `backend/`. Uno o dos minutos. |
 | ¿Por qué `0.0.0.0/0` en Atlas? | Render no tiene IP fija. Se compensa con mínimo privilegio, contraseña fuera del código y TLS. |
 | ¿Por qué tarda la primera vez? | El plan gratuito de Render se duerme tras unos 15 minutos sin uso. |
 | ¿Por qué otros ven un login de Vercel? | Abrieron una dirección de rama o de despliegue, que están protegidas; la pública es `parche-six.vercel.app`. |

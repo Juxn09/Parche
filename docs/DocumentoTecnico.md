@@ -310,7 +310,7 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E7 | Reserva cruzada rechazada (409) | [Imagen E7](evidencias/E7-ReservaCruzada409.jpg) |
 | E8 | Panel del propietario: agenda y reportes | [E8a](evidencias/E8a-PanelPropietarioAgenda.jpg) · [E8b](evidencias/E8b-PanelPropietarioReportes.jpg) |
 | E9 | Panel del admin: aprobación de sede y métricas | [E9a](evidencias/E9a-PanelAdminSedes.jpg) · [E9b](evidencias/E9b-PanelAdminMetricas.jpg) |
-| E10 | API desplegada en Render (`/api/salud`) | [Imagen E10](evidencias/E10-RenderSalud.png) · panel de Render pendiente |
+| E10 | API desplegada en Render (`/api/salud`) | [Imagen E10](evidencias/E10-RenderSalud.png) · [panel de Render (E14)](evidencias/E14-PanelRender.png) |
 | E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · panel de Vercel pendiente |
 | E12 | Búsqueda "golaso" con Atlas Search en la app publicada | [Imagen E12](evidencias/E12-BusquedaGolaso.jpg) (sección 9) |
 | E13 | Un pipeline de agregación ejecutado en mongosh (Compass) | [Imagen E13](evidencias/E13-PipelineCompass.png) (sección 9) |
@@ -386,6 +386,10 @@ $ git ls-files | grep -c '\.env$'
 
 ![E11. La interfaz en Vercel vista en un celular](evidencias/E11-VercelCelular.jpg)
 
+**E14. Panel de Render.** Web Service `Parche` (Python 3, plan Free), conectado a `Juxn09/Parche`, rama `main`, estado **Live** en el commit `f0d0989`, con 3 despliegues correctos (el último por Auto-Deploy). El panel advierte que la instancia gratuita se suspende por inactividad y la primera petición puede tardar 50 segundos o más. `main` va más adelante solo con cambios de documentación: el backend desplegado es idéntico.
+
+![E14. Panel de Render con el servicio Live](evidencias/E14-PanelRender.png)
+
 ## 11. Despliegue
 
 | Pieza | Servicio | Configuración |
@@ -394,7 +398,7 @@ $ git ls-files | grep -c '\.env$'
 | API | Render, Web Service Free | Rama `main`, carpeta `backend`, Python 3.13. Instalación: `pip install -r requirements.txt`. Arranque: `uvicorn app.Main:app --host 0.0.0.0 --port $PORT`. Chequeo de salud: `/api/salud`. Variables: `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET`, `FRONTEND_URL` |
 | Interfaz | Vercel | Rama `main`, carpeta `frontend`, preset Vite. Variable `VITE_API_URL` = URL de Render. `vercel.json` reescribe las rutas a `index.html` para que recargar en `/panel` no dé 404 |
 
-**Despliegue continuo:** cada `git push` a `main` vuelve a desplegar automáticamente la API y la interfaz.
+**Despliegue continuo:** cada push a `main` dispara un despliegue en Vercel; Render (carpeta raíz `backend`) solo redespliega cuando cambian archivos de `backend/`. Por eso, el 11 de noviembre Render seguía en `f0d0989` mientras `main` estaba más adelante: los commits posteriores solo cambiaron documentación y el código del backend es idéntico (`git diff f0d0989 main -- backend` no muestra cambios).
 
 **Credenciales:** ninguna contraseña está en el repositorio. Viven en el `.env` local (ignorado por Git) y en los paneles de Render y Vercel.
 

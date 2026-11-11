@@ -140,7 +140,7 @@ ESLint revisa con las reglas recomendadas de JavaScript y de React Hooks.
 
 **Pasos:**
 1. En `FRONTEND_URL` de Render pon la URL de Vercel y la local, separadas por coma: `https://<proyecto>.vercel.app,http://localhost:5173`.
-2. Cada `git push` a `main` redespliega automáticamente.
+2. Cada `git push` a `main` despliega la interfaz en Vercel. Render (carpeta raíz `backend`) solo redespliega la API cuando cambian archivos de `backend/`.
 3. El plan gratuito de Render se suspende tras 15 minutos sin uso. Abre la app un minuto antes de una demostración.
 
 ## Problemas comunes
