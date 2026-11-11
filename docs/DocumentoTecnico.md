@@ -302,7 +302,7 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E1 | Cluster de Atlas y las 5 colecciones con datos | [E1a](evidencias/E1a-AtlasCluster.png) · [E1b](evidencias/E1b-AtlasColecciones.png) · texto abajo |
 | E2 | Validación `$jsonSchema` rechazando un documento | [Imagen E2](evidencias/E2-ValidacionRechaza.png) |
 | E3 | Índices de `reservas`, con `ux_cancha_franja_activa` | Texto abajo |
-| E4 | Índice de Atlas Search en estado READY | `[[CAPTURA: Atlas → Search]]` |
+| E4 | Índice de Atlas Search en estado READY | [Imagen E4](evidencias/E4-AtlasSearchReady.png) |
 | E5 | `.env` ignorado por Git | Texto abajo |
 | E6 | Reserva hecha desde la interfaz y su documento en Atlas | `[[CAPTURA: reserva confirmada + documento en Compass]]` |
 | E7 | Reserva cruzada rechazada (409) | [Imagen E7](evidencias/E7-ReservaCruzada409.jpg) |
@@ -335,6 +335,10 @@ base: parche
   ix_partidos_abiertos     {partido_abierto.estado: 1, fecha: 1}
 validador de reservas: validationLevel strict
 ```
+
+**E4. Índice de Atlas Search.** En Atlas → Search & Vector Search, el índice `busqueda_canchas` sobre `parche.canchas` está en estado **READY** y consultable, con los campos `deportes`, `nombre` y `sede`, y 23 de 23 documentos indexados (100 %). El plan M0 permite hasta 3 índices de búsqueda; se usa 1.
+
+![E4. busqueda_canchas en estado READY](evidencias/E4-AtlasSearchReady.png)
 
 **E5. Las credenciales no están en el repositorio:**
 
