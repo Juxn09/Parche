@@ -402,13 +402,35 @@ Durante la evolución (rama `evolucion`) se mantuvo la forma de las respuestas. 
 
 **Endpoints nuevos:** `GET /api/canchas/libres-hoy` y `POST /api/admin/mantenimiento/finalizar-reservas`.
 
-## 12. Conclusiones
+## 12. Conclusiones: decisiones y aprendizajes
+
+**Decisiones principales**
 
 1. **El modelo documental encaja con el negocio.** Embeber el pago y el partido abierto en la reserva permite leer todo en una consulta. Referenciar canchas y usuarios evita documentos que crezcan sin límite.
 2. **La integridad crítica la garantiza la base de datos, no el código.** El índice único parcial impide los cruces de reservas incluso con peticiones simultáneas. Las actualizaciones atómicas impiden superar el cupo de un partido.
 3. **Las copias son decisiones explícitas.** Algunas se sincronizan (el nombre de la sede en la cancha) y otras son históricas a propósito (el precio y los nombres en la reserva).
 4. **El Aggregation Pipeline convierte las reservas en decisiones** para el dueño (horas pico, clientes, canchas subutilizadas) y para la plataforma (zonas, deportes, partidos).
 5. **Atlas aporta más que alojamiento:** Atlas Search, seguridad por red y usuario, y operación en la nube.
+
+**Aprendizajes obtenidos**
+
+1. **Una regla que importa debe vivir en la base, no solo en el código.** Si el cruce de horarios solo se revisara en la API, dos peticiones simultáneas podrían pasar las dos la revisión. El índice único parcial sobre `franjas` lo resolvió en la base: Atlas rechaza el segundo documento aunque el código falle.
+
+2. **Probar contra la base real, no contra una imitación.** Con `mongomock` las pruebas pasaban, pero ese simulador no aplica índices únicos sobre arreglos. Un cruce parcial de horas se colaba sin que nada fallara. Cambiamos a un MongoDB real temporal y comprobamos que las pruebas detectan errores: al quitar a propósito una regla, la prueba falla.
+
+3. **El orden de los resultados también es una decisión de diseño.** MongoDB no garantiza el orden entre documentos empatados. Con paginación, dos canchas con el mismo precio y nombre aparecían repetidas o se perdían entre páginas. Agregar `_id` como último criterio de `$sort` volvió el orden único y estable. Lo mismo pasó con un reporte de deportes empatados.
+
+4. **Embeber es copiar, y cada copia necesita una regla.** Guardar el nombre de la cancha y el precio dentro de la reserva hace rápida la lectura. Pero hubo que decidir cuáles copias se sincronizan (el nombre de la sede) y cuáles se congelan a propósito (el precio pagado, que es un hecho histórico).
+
+5. **Los datos tienen ciclo de vida.** Las reservas pasadas seguían en estado `activa`. Agregamos el estado `finalizada` con un script que primero muestra qué cambiaría y solo aplica con `--aplicar`, después de un respaldo. Verificamos que los reportes daban los mismos números antes y después, y que correrlo dos veces no cambia nada.
+
+6. **La hora también es un dato.** El servidor en la nube trabaja en UTC y los usuarios en Colombia (UTC−5). "Hoy" y "ya pasó esta hora" se calculan siempre con la zona horaria de Bogotá, y las pruebas congelan el reloj para que el resultado no dependa del momento en que se corren.
+
+7. **Desplegar es configurar, no solo subir código.** La aplicación funcionaba en local y fallaba en internet por detalles de configuración: CORS con la dirección exacta de Vercel, variables de entorno en cada servicio, la lista de acceso de red de Atlas y el arranque en frío del plan gratuito de Render. Las credenciales nunca entraron al repositorio: viven en `.env` y en los paneles de cada servicio.
+
+8. **Una consulta vale por la pregunta que responde.** Los pipelines de agregación más útiles no fueron los más largos, sino los que contestan algo que el dueño o el administrador necesita decidir: horas pico, canchas subutilizadas, zonas y deportes con más demanda. Antes de optimizar un endpoint nuevo revisamos con `explain()` que usara el índice (examina 5 de 964 documentos).
+
+9. **Medir en vez de suponer.** Los problemas de contraste, de navegación con teclado y de desborde en celular solo aparecieron al medirlos con axe, con el teclado y con capturas a 375 px. Varios ya existían antes del rediseño y no se veían en el computador.
 
 **Trabajo futuro:**
 - búsqueda "canchas cerca de mí" con `$geoNear`, aprovechando el índice 2dsphere que ya existe;
