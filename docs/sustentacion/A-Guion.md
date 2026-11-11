@@ -1,14 +1,18 @@
-# Guion de sustentación — Parche
+# Parte A — Guion para decir en voz alta
 
 > Proyecto final de Bases de Datos II · Prof. Juan Carlos Gómez
 > Integrantes: Juan Camilo Moreno, Marshall Robinson, Carlos Palacios
-> App: https://parche-six.vercel.app · API: https://parche-akv4.onrender.com/docs · Repositorio: https://github.com/Juxn09/Parche
 
-**Cómo usar este documento.** La **Parte A** es lo que se dice en voz alta, en orden, con las demos en su lugar. La **Parte B** es el anexo de consulta: cada herramienta con qué es, por qué, cómo se configuró y cómo mostrarla. Todo sale del código, los documentos y las pruebas del repositorio. Lo que se configuró en un panel web y no quedó en el código está marcado **CONFIGURADO EN PANEL: confirmar**.
+| Enlace | Dirección |
+|---|---|
+| Aplicación | https://parche-six.vercel.app |
+| API (documentación) | https://parche-akv4.onrender.com/docs |
+| Repositorio | https://github.com/Juxn09/Parche |
+
+**Cómo usar este documento.** Esta parte es lo que se dice en voz alta, en orden, con las demos en su lugar. El detalle de cada herramienta está en la Parte B, las reglas, consultas y recorridos de código en la Parte C y los diagramas en la Parte D.
 
 ---
 
-# PARTE A — Guion para decir en voz alta
 
 ## 1. Apertura (~2 min)
 
@@ -27,15 +31,11 @@
 
 ## 2. Arquitectura (~3 min)
 
-**Ventanas:** diagrama (este documento o `docs/DocumentoTecnico.md`), luego `/api/salud`, luego Atlas web.
+**Ventanas:** diagrama D2, luego `/api/salud`, luego Atlas web.
 
-```mermaid
-flowchart LR
-    U[Navegador] -->|HTTPS| V[Interfaz React<br/>Vercel]
-    V -->|fetch JSON + token JWT<br/>servicios/Api.js| A[API FastAPI<br/>Render]
-    A -->|PyMongo, TLS<br/>usuario parche_app| M[(MongoDB Atlas<br/>cluster M0, AWS N. Virginia)]
-    M --- S[Atlas Search<br/>índice busqueda_canchas]
-```
+Nota de versiones: la API corre en Render con **Python 3.13** (`backend/.python-version`); en el equipo de desarrollo se usa **Python 3.14**. Las 54 pruebas pasan en 3.14.
+
+![D2. Arquitectura y despliegue](../diagramas/D2-ArquitecturaDespliegue.png)
 
 🗣 "El navegador carga la interfaz desde Vercel. Cada acción llama a la API con `fetch`, siempre desde un único archivo, `frontend/src/servicios/Api.js`, que agrega el token de sesión. La API valida, aplica las reglas y habla con Atlas usando PyMongo con un solo cliente. Atlas además tiene Atlas Search para la búsqueda por texto."
 
@@ -49,22 +49,9 @@ flowchart LR
 
 **Ventanas:** diagrama del modelo, luego Compass.
 
-```mermaid
-erDiagram
-    USUARIOS ||--o{ SEDES : "posee (propietario_id)"
-    SEDES ||--o{ CANCHAS : "tiene (sede_id)"
-    USUARIOS ||--o{ RESERVAS : "hace (usuario_id)"
-    CANCHAS ||--o{ RESERVAS : "se reserva (cancha_id)"
-    DEPORTES ||--o{ CANCHAS : "catalogo que valida"
-    USUARIOS ||--o| EMPRESA : "embebe"
-    DEPORTES ||--|{ MODALIDAD : "embebe"
-    SEDES ||--|{ HORARIO : "embebe"
-    RESERVAS ||--o| PAGO : "embebe"
-    RESERVAS ||--o| PARTIDO_ABIERTO : "embebe"
-    PARTIDO_ABIERTO ||--o{ PARTICIPANTE : "embebe"
-```
+![D1. Modelo de datos completo](../diagramas/D1-ModeloDeDatos.png)
 
-*(Versión resumida para hablar; el diagrama completo con campos está en `docs/ModeloDeDatos.md` y en la página 4 del documento técnico.)*
+*(Diagrama D1: las 5 colecciones con sus campos, subdocumentos embebidos, copias e índices. El código Mermaid de respaldo está en `docs/diagramas/Mermaid.md`.)*
 
 🗣 "Usamos 5 colecciones: `usuarios`, `deportes`, `sedes`, `canchas` y `reservas`. La regla fue: **embebemos** lo que se lee junto y tiene tamaño acotado, y **referenciamos** lo que tiene vida propia o crece sin límite."
 
@@ -96,15 +83,15 @@ Debe salir `MongoServerError: Document failed validation`.
 
 **Demo A4.2 — reservar con hora pico (ESCRIBE EN ATLAS).** Abrir una cancha → elegir **pasado mañana o después** una hora con "Pico" → **Reservar y pagar**. 🗣 "La interfaz no envía el precio: lo calcula el servidor."
 
-**El recorrido, de punta a punta:**
+**El recorrido, de punta a punta** (diagrama D3). FastAPI revisa primero la sesión y después el cuerpo: sin token, la respuesta es 401 aunque el cuerpo esté mal.
 
 | # | Capa | Qué pasa | Dónde mostrarlo |
 |---|---|---|---|
 | 1 | Regleta | Pinta cada hora con `GET /api/canchas/{id}/disponibilidad`: libre, pico, ocupada, elegida | `frontend/src/componentes/Regleta.jsx:17` |
 | 2 | Interfaz | `reservar()` arma el cuerpo con `cancha_id`, `fecha`, `hora_inicio`, `horas`, `deporte`, `modalidad`, `metodo_pago`, `abierta`. Sin precio | `frontend/src/paginas/Detalle.jsx:110` |
 | 3 | Api.js | `fetch POST /api/reservas` con `Authorization: Bearer <token>`; corta a los 45 s; si responde 401 cierra la sesión | `frontend/src/servicios/Api.js:24`, `:33`, `:62` |
-| 4 | Pydantic | `ReservaEntrada` valida la forma (horas entre 1 y 3, fecha, método de pago). Si falla: 422 en español | `backend/app/Modelos.py:104` · `backend/app/Errores.py:89` |
-| 5 | Permisos | `solo_cliente` verifica el JWT y el rol. Sin token 401; otro rol 403 | `backend/app/Seguridad.py:65` y `:85` |
+| 4 | Permisos | `solo_cliente` verifica el JWT y el rol. Sin token 401; otro rol 403 | `backend/app/Seguridad.py:65` y `:85` |
+| 5 | Pydantic | `ReservaEntrada` valida la forma (horas entre 1 y 3, fecha, método de pago). Si falla: 422 en español | `backend/app/Modelos.py:104` · `backend/app/Errores.py:89` |
 | 6 | Reglas | Cancha activa de sede aprobada y propietario activo; ofrece esa modalidad; ni pasado, ni más de 30 días, ni fuera del horario; hora de Bogotá | `backend/app/routers/Reservas.py:36-62` y `:83-88` |
 | 7 | Precio | Suma hora por hora: normal o pico (franjas de 6 a 9 p. m.) | `Reservas.py:94` · `backend/app/Utilidades.py:15` y `:61` |
 | 8 | Base | `insert_one` con `franjas` y `estado: "activa"`; el índice único rechaza un cruce | `Reservas.py:132` |
@@ -212,7 +199,7 @@ Después de cambiar el backend: correr las pruebas; si la regla cambió a propó
 |---|---|---|---|
 | Base de datos en la nube | MongoDB Atlas M0, AWS N. Virginia | A2.2, A3 | ✅ Verificado |
 | Backend/API que procesa, valida y opera | FastAPI en `backend/app`, 41 rutas | A4.2, A4.4 | ✅ |
-| Credenciales fuera del repositorio | `.gitignore`, `.env.example`, variables en Render | B, ficha f | ✅ (`git check-ignore`) |
+| Credenciales fuera del repositorio | `.gitignore`, `.env.example`, variables en Render | Parte B, ficha "python-dotenv, .env…" · demo `git check-ignore` | ✅ (`git check-ignore`) |
 | Desplegada y accesible desde internet | Vercel + Render | A2.1, apertura | ✅ 200 sin sesión en `parche-six` |
 | Interfaz gráfica | React en `frontend/src` | Toda la Parte A | ✅ |
 | Creación, consulta, actualización, eliminación | Sedes y canchas (`/api/propietario/*` con POST, GET, PUT, DELETE); reservas, bloqueos, usuarios | A4.2, A4.5 | ✅ |
@@ -251,7 +238,7 @@ Ensayo sugerido: que cada uno haga al menos una vez la demo de otro bloque.
 | Si pasa esto | Qué hacer |
 |---|---|
 | **Render dormido** (la primera respuesta tarda ~1 min) | Abrir `/api/salud` 5 minutos antes y dejar la pestaña abierta. Si tarda en vivo, decir: "es el plan gratuito, se despierta en un minuto" y seguir con el diagrama |
-| **Atlas no conecta desde la red del salón** | Antecedente: en otra red la API mostró `SSL handshake failed ... tlsv1 alert internal error` porque la IP no estaba en Network Access. Hoy Network Access tiene `0.0.0.0/0`, así que la app publicada (Render → Atlas) no depende de la red del salón. Lo que sí depende es **Compass y la API local** desde el portátil: si fallan, usar el hotspot del celular, o mostrar los datos desde la app publicada y las capturas |
+| **Atlas no conecta desde la red del salón** | Antecedente real: desde otra red, la API local y Compass fallaron con un error de handshake TLS (`SSL handshake failed ... tlsv1 alert internal error`) **incluso con `0.0.0.0/0` en Network Access**. La causa no se determinó; hipótesis: un proxy o firewall que inspecciona TLS, un cambio de Network Access que aún no se había propagado, o un bloqueo del proveedor de internet. Lo que depende de la red del salón es **Compass y la API local** del portátil; la app publicada (navegador → Vercel → Render → Atlas) no pasa por esa red para llegar a Atlas. Si falla: hotspot del celular; si sigue fallando, mostrar los datos desde la app publicada, `/api/salud` y las capturas E1, E2 y E7 |
 | **Vercel no carga** | Correr la interfaz local (`npm run dev` en `frontend`, http://localhost:5173) apuntando a Render, o mostrar las capturas E8, E9 y E11 |
 | **Se cae el Wi-Fi** | Hotspot del celular. Si no hay internet: mostrar el PDF del documento técnico (capturas de cada pantalla) y correr las 54 pruebas, que no necesitan internet |
 | **Una demo que escribe en Atlas falla a mitad** | Revisar en Compass el estado del documento y revertir como dice cada demo |
@@ -283,147 +270,6 @@ Tener abiertas, por si acaso, las capturas de `Evidencias/Documento/` de la bóv
 | 19–20 | Cierre | App |
 | 20+ | Preguntas y cambios en vivo | Según la pregunta |
 
----
+## 13. Si preguntan qué no hace el sistema
 
-# PARTE B — Anexo técnico de consulta
-
-## B1. Inventario de herramientas
-
-Versiones tomadas de `backend/requirements.txt`, `backend/RequisitosPruebas.txt`, `frontend/package.json` y de lo instalado en el equipo de desarrollo.
-
-### a) MongoDB Atlas
-- **Qué es:** el servicio de MongoDB en la nube, administrado por MongoDB.
-- **Qué hace en Parche:** guarda las 5 colecciones de la base `parche` (`usuarios`, `deportes`, `sedes`, `canchas`, `reservas`) y el índice de búsqueda `busqueda_canchas`.
-- **Por qué:** el enunciado pide una base en la nube; Atlas da validación `$jsonSchema`, índices parciales y Atlas Search, que solo existe en Atlas. Se descartó una base local porque no cumple el requisito de nube.
-- **Cómo se configuró:**
-  1. Cluster **M0 (gratis)** llamado `Parche`, en **AWS N. Virginia (us-east-1)**; versión 8.0 y réplica de 3 nodos (visto en el panel de Atlas).
-  2. Usuario de base de datos **`parche_app`** con `readWrite` y `dbAdmin` **solo sobre la base `parche`** (mínimo privilegio). El usuario creado por defecto, con rol Atlas Admin, se eliminó.
-  3. **Network Access:** primero solo la IP del equipo de desarrollo (`/32`); luego `0.0.0.0/0`, porque Render no tiene IP fija. Se compensa con el usuario de mínimo privilegio, la contraseña fuera del código y TLS.
-  4. La **cadena de conexión** (`mongodb+srv://…`) vive solo en la variable `MONGODB_URI`: en `backend/.env` (ignorado por Git) y en el panel de Render.
-  5. Colecciones, validadores e índices: `python scripts/CrearColecciones.py` (ver ficha o).
-  6. Índice de Atlas Search: `python scripts/CrearIndiceBusqueda.py` (ver ficha o).
-  - **CONFIGURADO EN PANEL: confirmar** — fecha de creación del cluster, si hay alertas configuradas, y que Network Access tenga hoy `0.0.0.0/0`: ______
-- **Índices:** ver la sección 5.3 del documento técnico. Los clave: `ux_cancha_franja_activa` (único, parcial), `ux_email` (único), `ux_nombre` (único), `ix_ubicacion_geo` (2dsphere).
-- **Atlas Search:** índice `busqueda_canchas` sobre `canchas`, con el analizador propio `espanol_sin_tildes` (tokenizador `standard`, filtros `lowercase` e `icuFolding`), `dynamic: false` y solo los campos `nombre`, `sede.nombre`, `sede.zona`, `sede.ciudad`, `deportes.deporte` y `deportes.modalidad` (`backend/scripts/CrearIndiceBusqueda.py:30-60`).
-- **Se conecta con:** la API (PyMongo) y, para administrar, Compass.
-- **Si falla:** la API responde 503 y no arranca si no hay conexión. Se comprueba con `/api/salud`.
-- **Cómo mostrarlo:** Atlas web → Clusters → `Parche`; Browse Collections; Search & Vector Search.
-
-### b) Python y entorno virtual
-- **Qué es:** el lenguaje del backend; `.venv` es una carpeta con las librerías del proyecto aisladas del sistema.
-- **Qué hace:** ejecuta la API y los scripts.
-- **Versiones:** en local, Python 3.14 dentro de `backend/.venv`; en Render, **Python 3.13**, fijado con el archivo `backend/.python-version`.
-- **Cómo se configuró:** `python -m venv .venv` → activar → `pip install -r requirements.txt`. `requirements.txt` fija cada versión exacta (por ejemplo `fastapi==0.162.2`, `pymongo==4.19.0`), para que Render instale lo mismo que en local.
-- **Si falla:** `pip install` falla en el build de Render y el despliegue no sale; se ve en los logs del panel.
-- **Cómo mostrarlo:** VS Code → `backend/requirements.txt` y `backend/.python-version`.
-
-### c) FastAPI + Uvicorn (y Starlette)
-- **Qué es:** FastAPI es el framework web de la API (construido sobre Starlette); Uvicorn es el servidor que la ejecuta.
-- **Qué hace:** `backend/app/Main.py` crea la app, registra el manejo de errores (`:37-38`), CORS (`:42-48`) y 7 routers (`:51-57`): `Auth`, `Canchas`, `Propietario`, `Reservas`, `Partidos`, `Admin` y `Reportes`, más `/api/salud` y `/api/deportes`. En total, 41 rutas.
-- **Por qué:** valida los datos con Pydantic automáticamente y genera la documentación interactiva `/docs` sin trabajo extra. (No quedó registrada una alternativa evaluada: ______)
-- **Versiones:** `fastapi==0.162.2`, `uvicorn==0.54.0`, `starlette==1.10.0`.
-- **Cómo se configuró:** en local `uvicorn app.Main:app --reload` (puerto 8000); en Render `uvicorn app.Main:app --host 0.0.0.0 --port $PORT`.
-- **CORS:** solo acepta las direcciones de la variable `FRONTEND_URL` (varias, separadas por coma, `backend/app/Config.py:29`).
-- **Errores:** `backend/app/Errores.py` traduce los 422 al español y convierte las caídas de Atlas en 503 y lo inesperado en 500, siempre en JSON y con CORS.
-- **Cómo mostrarlo:** https://parche-akv4.onrender.com/docs.
-
-### d) PyMongo
-- **Qué es:** el driver oficial de MongoDB para Python.
-- **Qué hace:** un **único `MongoClient`** para toda la API (`backend/app/BaseDatos.py:15-21`), con `serverSelectionTimeoutMS=8000` (si Atlas no responde en 8 s, error claro), `tz_aware=True` (fechas con zona horaria) y `appname="Parche API"`. PyMongo mantiene un pool de conexiones y las reutiliza.
-- **TLS:** la cadena `mongodb+srv` de Atlas usa TLS por defecto; el código no lo configura aparte.
-- **Versión:** `pymongo==4.19.0` (con `dnspython` para resolver `mongodb+srv`).
-- **Si falla:** `ServerSelectionTimeoutError` → 503 (`Errores.py`).
-
-### e) Pydantic, PyJWT y bcrypt
-- **Pydantic** (`pydantic==2.14.3`): define la forma de cada entrada; por ejemplo `ReservaEntrada` (`backend/app/Modelos.py:104`) exige horas entre 1 y 3. Si algo no cumple, 422 antes de ejecutar la ruta.
-- **PyJWT** (`PyJWT==2.15.1`): crea y verifica el token de sesión, firmado con HS256 y la clave `JWT_SECRET`. Dura `JWT_MINUTOS` (por defecto 480 min = 8 h) (`backend/app/Seguridad.py:17` y `:37-51`).
-- **bcrypt** (`bcrypt==5.0.0`): guarda las contraseñas como hash con sal; no se pueden revertir (`Seguridad.py:24-31`).
-- **Cómo se conectan:** `usuario_actual` (`Seguridad.py:65`) lee el token, verifica firma y expiración y consulta que el usuario siga activo; `requiere_rol` (`:85`) deja pasar solo ciertos roles.
-
-### f) python-dotenv, `.env`, `.env.example`, `.gitignore`
-- **Qué es:** python-dotenv (`1.2.4`) lee variables desde un archivo `.env`.
-- **Qué hace:** `backend/app/Config.py:12` carga `backend/.env`; `MONGODB_URI` y `JWT_SECRET` son obligatorias (`:15-25`): sin ellas la API no arranca.
-- **Variables del backend (solo nombres):** `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET`, `FRONTEND_URL`, `SEED_PASSWORD` (solo para `CargarDatos.py`) y, opcional, `JWT_MINUTOS`.
-- **Variable del frontend:** `VITE_API_URL` (no es secreta: el navegador la ve).
-- **Protección:** `.gitignore` excluye `.env` y `.env.*` pero permite `.env.example`, que es la plantilla sin valores. En Render y Vercel las variables se ponen en el panel.
-- **Cómo comprobarlo:** `git check-ignore -v backend/.env` → `.gitignore:2:.env`.
-
-### g) React, Vite, react-router, Tailwind 4, lucide-react
-- **Qué es:** React (`19.3.1`) arma la interfaz con componentes; Vite (`8.3.6`) la sirve en desarrollo y la compila; react-router (`8.5.1`) maneja las rutas; Tailwind CSS 4 (`4.3.5`, plugin `@tailwindcss/vite`) da los estilos; lucide-react (`1.70.0`) da los íconos. La tipografía Archivo se carga desde Google Fonts (`frontend/index.html`).
-- **Estructura:** `frontend/src/paginas` (una por pantalla: Inicio, Detalle, MisReservas, Partidos, PanelPropietario, PanelAdmin, Ingresar, Registro, NoEncontrada), `componentes` (Piezas, Regleta, Encabezado, Gráficas…), `contexto/Sesion.jsx` (sesión) y `servicios` (`Api.js`, `Catalogo.js`).
-- **Api.js, único cliente HTTP:** todas las llamadas pasan por `api()` (`frontend/src/servicios/Api.js:24`): agrega el token, corta a los 45 s (`:8`, `:33`), avisa a la sesión si llega un 401 (`:62`) y convierte el `detail` de la API en un mensaje (`:66`).
-- **Sistema de diseño:** colores y medidas como variables CSS en `frontend/src/Estilos.css` (con modo claro y oscuro) y piezas reutilizables en `frontend/src/componentes/Piezas.jsx` (botones, chips, pestañas, avisos, diálogos).
-- **Configuración:** `frontend/vite.config.js` (plugins React y Tailwind, puerto 5173 fijo); `npm install`, `npm run dev`, `npm run build`.
-
-### h) Render
-- **Qué es:** servicio en la nube que ejecuta la API.
-- **Cómo se configuró (según el README):** Web Service desde el repositorio, rama `main`, Root Directory `backend`, Build `pip install -r requirements.txt`, Start `uvicorn app.Main:app --host 0.0.0.0 --port $PORT`, Health check `/api/salud`, Python 3.13 por `backend/.python-version`. Variables (nombres): `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET`, `FRONTEND_URL`.
-- **FRONTEND_URL y CORS:** contiene la dirección de Vercel y la local, separadas por coma. Verificado: la API acepta `https://parche-six.vercel.app` y no da permiso a un origen ajeno.
-- **Despliegue automático:** cada push a `main` redespliega (comprobado el 10 nov 2026: listo en ~1 minuto).
-- **El sueño del plan gratuito:** tras unos 15 minutos sin uso se suspende y la primera petición tarda cerca de un minuto.
-- **CONFIGURADO EN PANEL: confirmar** — plan (Free), región del servicio y si el auto-deploy está activo: ______
-
-### i) Vercel
-- **Qué es:** servicio que publica la interfaz.
-- **Cómo se configuró:** proyecto `parche` del equipo `juxn-s-projects`, desde el repositorio, Root Directory `frontend`, preset **Vite**, variable `VITE_API_URL` con la URL de Render. `frontend/vercel.json` reescribe todas las rutas a `index.html`, para que funcionen al recargar `/canchas/…`.
-- **Dominio de producción:** `parche-six.vercel.app` (rama `main`). Responde 200 sin sesión.
-- **Protección de despliegues:** las direcciones de rama (`parche-git-…-juxn-s-projects.vercel.app`) y de despliegue puntual piden iniciar sesión en Vercel (302 a `vercel.com/sso-api`); por eso solo se comparte `parche-six`.
-- **CONFIGURADO EN PANEL: confirmar** — comando de build y carpeta de salida (por defecto del preset: `npm run build` y `dist`), versión de Node y modo exacto de Deployment Protection: ______
-
-### j) Git y GitHub
-- **Repositorio:** https://github.com/Juxn09/Parche.
-- **Ramas:** `main` (la que se despliega) y `evolucion` (mejoras de la última fase; se fusionó en `main` el 10 nov 2026).
-- **Tags de respaldo:** `respaldo-pre-evolucion` y `respaldo-main-9ba9116`, ambos en el `main` anterior a la fusión, para volver atrás si hiciera falta.
-- **Flujo:** cambios pequeños con un commit cada uno; antes de fusionar, 54 pruebas y `vite build` sin errores; push a `main` → Render y Vercel redespliegan.
-
-### k) VS Code y Claude Code
-- **VS Code:** editor y terminal para correr la API, la interfaz, los scripts y las pruebas.
-- **Claude Code** (asistente de programación con IA de Anthropic): se usó durante todo el desarrollo para escribir buena parte del código, los scripts, las pruebas y la documentación, por fases y siguiendo nuestras instrucciones. Nosotros definimos el tema, las reglas y las decisiones, aprobamos cada cambio a la base de datos antes de ejecutarlo y revisamos y probamos el resultado.
-- **Confirmar con el equipo** cómo describir la proporción del trabajo de cada uno: ______
-- Notas de estudio y decisiones del proyecto: bóveda de Obsidian.
-
-### l) pytest y pymongo-inmemory
-- **Qué es:** pytest (`9.2.0`) corre las pruebas; pymongo-inmemory (`0.5.0`) levanta un MongoDB real temporal (versión 7.0) solo para las pruebas; httpx (`0.28.1`) lo usa el cliente de pruebas de FastAPI.
-- **Por qué no mongomock:** no aplica índices únicos sobre arreglos; con él, un cruce parcial de horas pasaba sin error.
-- **Seguridad:** `backend/pruebas/conftest.py` se niega a correr si la base no es la local `parche_pruebas`; nunca toca Atlas. El reloj está congelado en el 10 nov 2026, 10:00 a. m. (Bogotá).
-- **Instalación:** `pip install -r RequisitosPruebas.txt` (no se instala en Render). Configuración en `backend/pytest.ini` (archivos `Prueba*.py`, funciones `prueba_*`).
-- **Cómo mostrarlo:** `python -m pytest` → "54 passed".
-
-### m) ESLint, axe y Lighthouse
-- **ESLint** (`9.39.5`, con reglas de React Hooks): revisa el código de la interfaz; `npm run lint` → 0 errores.
-- **axe-core** (`4.10.2`, dependencia de desarrollo): midió contraste y accesibilidad de la regleta y la portada, en modo claro y oscuro: 0 violaciones.
-- **Lighthouse:** no se usó.
-
-### n) Compass y mongosh
-- **Compass:** la aplicación de escritorio de MongoDB, conectada a Atlas como "Parche Atlas"; se usó para revisar documentos, colecciones e índices.
-- **mongosh:** la consola de MongoDB, dentro de Compass (*Open MongoDB shell*); se usó para probar la validación (`insertOne` inválido), ver índices (`getIndexes`) y correr los pipelines de `docs/Consultas.md`.
-
-### o) Scripts (`backend/scripts/`)
-| Script | Qué hace | ¿Destructivo? |
-|---|---|---|
-| `CrearColecciones.py` | Crea o actualiza las 5 colecciones con su `$jsonSchema` (`strict` + `error`) y todos los índices. Se puede repetir | No borra datos |
-| `CrearIndiceBusqueda.py` | Crea o actualiza el índice de Atlas Search `busqueda_canchas` y espera a que quede listo | No borra datos |
-| `CargarDatos.py` | Llena la base con datos de prueba realistas | **SÍ: borra todos los documentos** de las 5 colecciones antes de cargar (pide escribir SI). No se debe correr contra Atlas sin un respaldo |
-| `FinalizarReservas.py` | Pasa a `finalizada` las reservas y bloqueos activos que ya terminaron. Por defecto solo cuenta; aplica con `--aplicar` | No borra; cambia el estado. Idempotente |
-
-## B2. Cómo se despliega de cero
-
-1. **Atlas:** crear el cluster M0 en AWS N. Virginia → crear el usuario `parche_app` con permisos solo sobre `parche` → Network Access `0.0.0.0/0` → copiar la cadena de conexión.
-2. **Base:** en local, crear `backend/.env` desde `.env.example` con `MONGODB_URI`, `MONGODB_DB` y `JWT_SECRET` → `python scripts/CrearColecciones.py` → `python scripts/CrearIndiceBusqueda.py` → (opcional, base vacía) `python scripts/CargarDatos.py`.
-3. **API en Render:** nuevo Web Service desde GitHub, rama `main`, Root `backend`, Build `pip install -r requirements.txt`, Start `uvicorn app.Main:app --host 0.0.0.0 --port $PORT`, Health check `/api/salud`, variables `MONGODB_URI`, `MONGODB_DB`, `JWT_SECRET` y `FRONTEND_URL` (provisional) → comprobar `/api/salud`.
-4. **Interfaz en Vercel:** nuevo proyecto desde GitHub, Root `frontend`, preset Vite, variable `VITE_API_URL` = URL de Render → desplegar → anotar el dominio de producción.
-5. **CORS:** en Render, poner en `FRONTEND_URL` el dominio de Vercel y `http://localhost:5173`, separados por coma → guardar (Render reinicia) → abrir la app y comprobar que carga las canchas.
-
-## B3. Preguntas de configuración
-
-| Pregunta | Respuesta corta |
-|---|---|
-| ¿Dónde están las credenciales? | En `backend/.env` (ignorado por Git) y en las variables de entorno de Render. En el repositorio solo está `.env.example` sin valores. |
-| ¿Cómo se conecta la API a Atlas? | PyMongo con un único `MongoClient` y la cadena de `MONGODB_URI`, con el usuario `parche_app` (solo base `parche`) y TLS. `BaseDatos.py:15`. |
-| ¿Qué pasa si cambia la URL de Vercel? | El navegador bloquea las llamadas por CORS hasta poner la nueva URL en `FRONTEND_URL` de Render. También hay que actualizar los enlaces del documento. |
-| ¿Qué pasa si cambia la URL de Render? | Cambiar `VITE_API_URL` en Vercel y volver a desplegar la interfaz (la variable se incrusta al compilar). |
-| ¿Cómo se despliega un cambio? | Commit y push a `main`: Render y Vercel redespliegan solos en uno o dos minutos. |
-| ¿Por qué `0.0.0.0/0` en Atlas? | Render no tiene IP fija. Se compensa con mínimo privilegio, contraseña fuera del código y TLS. |
-| ¿Por qué tarda la primera vez? | El plan gratuito de Render se duerme tras unos 15 minutos sin uso. |
-| ¿Por qué otros ven un login de Vercel? | Abrieron una dirección de rama o de despliegue, que están protegidas; la pública es `parche-six.vercel.app`. |
-| ¿Cómo se crean colecciones e índices? | Con scripts reproducibles: `CrearColecciones.py` y `CrearIndiceBusqueda.py`. |
+🗣 "Somos honestos con los límites: el pago es simulado, la finalización de reservas se ejecuta a mano, el NIT del propietario no se valida contra ninguna fuente, no limitamos los intentos de login y el catálogo de deportes se referencia por nombre. Lo primero que mejoraríamos es un pago real, la finalización automática y la seguridad del login." (Detalle y mejoras: Parte C, sección C4.)
