@@ -83,13 +83,13 @@ Parche resuelve estos tres problemas en una sola plataforma.
 
 | Colección | Qué guarda | Documentos (datos de prueba) |
 |---|---|---|
-| `usuarios` | Jugadores, propietarios y administradores en una sola colección con el campo `rol` (**patrón polimórfico**: solo los propietarios tienen `empresa`) | 35 |
+| `usuarios` | Jugadores, propietarios y administradores en una sola colección con el campo `rol` (**patrón polimórfico**: solo los propietarios tienen `empresa`) | 36 |
 | `deportes` | Catálogo de deportes con sus modalidades y el número de jugadores | 5 |
 | `sedes` | Lugares físicos de cada propietario, con ubicación GeoJSON, horario y servicios | 8 |
 | `canchas` | Cada cancha (puede ser multiuso), con precios normal y de hora pico | 23 |
-| `reservas` | Reservas de los jugadores **y** bloqueos del propietario (campo `tipo`) | 964 |
+| `reservas` | Reservas de los jugadores **y** bloqueos del propietario (campo `tipo`) | 966 (959 reservas y 7 bloqueos) |
 
-> Conteos tomados de `GET /api/salud` en producción el 10 de noviembre de 2026.
+> Conteos leídos en Atlas (solo lectura) el 11 de noviembre de 2026 a las 00:41, hora de Bogotá. El 10 de noviembre eran 35 usuarios y 964 reservas: durante las pruebas del 10 de noviembre se registró un usuario y se crearon 2 reservas desde la app publicada.
 
 ### 5.2 Relaciones: Embedding vs Referencing
 
@@ -144,7 +144,7 @@ La evidencia está en la sección 10 (E2): Compass conectado a Atlas rechaza un 
 |---|---|---|
 | Todos | Portada con las canchas libres de esta noche, consultadas en vivo | `/` |
 | Todos | Buscador con filtros (deporte, modalidad, ciudad, precio, techo, día y hora libre, orden) y búsqueda de texto con Atlas Search | `/` |
-| Todos | Ficha de la cancha con la sede completa (`$lookup`) y la regleta de horas del día | `/canchas/:id` |
+| Todos | Ficha de la cancha con la sede completa (`$lookup`) y la regleta de horas del día: cada hora dice si está libre (con su precio), en hora pico, ocupada o elegida, sin depender del color, y se puede recorrer con el teclado | `/canchas/:id` |
 | Todos | Partidos abiertos que buscan jugadores | `/partidos` |
 | Jugador | Reservar (de 1 a 3 horas) y opcionalmente **abrir el partido** | `/canchas/:id` |
 | Jugador | Unirse a un partido pagando su cuota (actualización atómica) | `/partidos` |
@@ -187,7 +187,7 @@ La evidencia está en la sección 10 (E2): Compass conectado a Atlas rechaza un 
 | Nadie puede registrarse como administrador | API: Pydantic solo admite `cliente` o `propietario` | `Modelos.py` |
 | Las canchas de un propietario desactivado no aparecen ni se pueden reservar | API | `Utilidades.py` (`propietarios_inactivos`) |
 | Rechazar una sede con reservas futuras exige confirmación; las reservas existentes se respetan | API: responde 409 y luego acepta `confirmar: true` | `Admin.py` |
-| Una reserva que ya terminó pasa de `activa` a `finalizada` | API, con una función idempotente (ruta del admin y script) | `CicloDeVida.py` |
+| Una reserva que ya terminó pasa de `activa` a `finalizada` | API, con una función idempotente (ruta del admin y script `FinalizarReservas.py`, que por defecto solo cuenta y aplica con `--aplicar`). El 10 de noviembre se aplicó en Atlas a 29 reservas, después de un respaldo de las 964; los reportes dieron los mismos números antes y después, y una segunda ejecución cambió 0. No es automática: hay que ejecutarla | `CicloDeVida.py` |
 
 **Por qué el cruce de reservas no se revisa con un `if`.** Si la API consultara primero "¿está libre?" y luego insertara, dos personas que reservan en el mismo instante pasarían ambas la consulta. Con el índice único, la base de datos acepta la primera inserción y rechaza la segunda: es imposible que se crucen.
 
@@ -209,6 +209,7 @@ Salida de `python -m pytest` en `backend` (10 nov 2026):
 **Manejo de errores.** Todos los errores llegan a la interfaz en JSON y en español:
 - La validación (422) traduce los mensajes de Pydantic. Por ejemplo, *"El tipo de cuenta debe ser una de estas opciones: cliente o propietario"*.
 - Si la base de datos no responde, la API contesta **503** *"La base de datos no está disponible en este momento"*, en vez de un 500 en texto plano.
+- Cualquier otro error inesperado responde **500** en JSON (*"Ocurrió un error inesperado en el servidor"*), sin mostrar detalles internos.
 - Un middleware propio (`Errores.py`) se registra **antes** que CORS, así que también estas respuestas llevan las cabeceras CORS y el navegador puede leerlas.
 - En la interfaz:
   - un 401 con sesión iniciada cierra la sesión y lleva a *Ingresar* con el aviso "Tu sesión expiró";
@@ -275,13 +276,14 @@ Todos los reportes se calculan con **Aggregation Pipeline** dentro de MongoDB (`
 
 **Paginación ("Cargar más").** La lista pide páginas de 12 con `saltar`. Al orden de `GET /api/canchas` se le agregó `_id` como último criterio. Sin él, dos canchas empatadas en precio y nombre (por ejemplo, las dos "Cancha 2" de $160.000) podían cambiar de lugar entre páginas, y "Cargar más" repetiría una y perdería otra. Las pruebas de `PruebaPaginacion.py` recorren la lista página por página con distintos tamaños, órdenes y filtros, y comprueban que no se repita ni se pierda ninguna cancha. Al quitar el desempate, fallan 8 de 9.
 
-**Resultados con los datos de prueba** (8 semanas):
+**Resultados con los datos de prueba** (periodo por defecto: las últimas 8 semanas; consultado el 11 de noviembre de 2026. Como la ventana avanza cada día, las cifras cambian levemente de un día a otro):
 - la hora más llena es el sábado a las 7 p. m., con 22,9 %;
-- el mejor cliente tiene 14 reservas;
+- la mejor clienta de la propietaria de prueba (Laura Gómez) tiene 13 reservas;
 - la Cancha 3 de El Golazo Suba, en mantenimiento, tiene 0 horas;
-- la modalidad más reservada es fútbol 5 (195);
-- la zona con más demanda es Kennedy (156);
-- el llenado promedio de los partidos abiertos es 71,1 %.
+- la modalidad más reservada es fútbol 5 (194);
+- la zona con más demanda es Kennedy (154);
+- el llenado promedio de los partidos abiertos es 70,8 % (138 partidos, 24 completos);
+- reservas jugadas por mes en toda la plataforma: septiembre 233, octubre 417 y noviembre 207 (mes en curso).
 
 **Búsqueda de texto (Atlas Search).** `GET /api/canchas?texto=` usa `$search` con `fuzzy` (tolera una letra de error) sobre nombre, sede, zona, ciudad y modalidad. Si no encuentra nada, cae a un `$regex` escapado. La respuesta indica qué motor respondió (`motor_busqueda`). Por ejemplo, "golaso" encuentra "El Golazo" y "padel" encuentra "Pádel".
 
@@ -297,7 +299,7 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 
 | # | Evidencia | Dónde |
 |---|---|---|
-| E1 | Cluster de Atlas y las 5 colecciones con datos | Texto abajo · captura de Atlas pendiente |
+| E1 | Cluster de Atlas y las 5 colecciones con datos | [E1a](evidencias/E1a-AtlasCluster.png) · [E1b](evidencias/E1b-AtlasColecciones.png) · texto abajo |
 | E2 | Validación `$jsonSchema` rechazando un documento | [Imagen E2](evidencias/E2-ValidacionRechaza.png) |
 | E3 | Índices de `reservas`, con `ux_cancha_franja_activa` | Texto abajo |
 | E4 | Índice de Atlas Search en estado READY | `[[CAPTURA: Atlas → Search]]` |
@@ -310,15 +312,21 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · panel de Vercel pendiente |
 | E12 | Búsqueda "golaso" con Atlas Search en la app publicada | [Imagen E12](evidencias/E12-BusquedaGolaso.jpg) (sección 9) |
 
-**E1 y E3. Colecciones e índices en Atlas** (consulta de solo lectura con PyMongo):
+**E1. El cluster en Atlas.** Cluster `Parche`, plan gratuito (M0), AWS N. Virginia (us-east-1), MongoDB 8.0, réplica de 3 nodos y 1 índice de búsqueda; en Data Explorer, la base `parche` con sus 5 colecciones y un documento de `reservas`.
+
+![E1a. Cluster Parche en Atlas](evidencias/E1a-AtlasCluster.png)
+
+![E1b. Base parche y la colección reservas en Data Explorer](evidencias/E1b-AtlasColecciones.png)
+
+**E1 y E3. Colecciones e índices en Atlas** (consulta de solo lectura con PyMongo, 10 de noviembre de 2026):
 
 ```text
 base: parche
   canchas         23 documentos
   deportes         5 documentos
-  reservas       964 documentos
+  reservas       964 documentos   (966 el 11 de noviembre)
   sedes            8 documentos
-  usuarios        35 documentos
+  usuarios        35 documentos   (36 el 11 de noviembre)
 índices de reservas:
   _id_                     {_id: 1}
   ux_cancha_franja_activa  {cancha_id: 1, franjas: 1}  unique, partial {estado: "activa"}

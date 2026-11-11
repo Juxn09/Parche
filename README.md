@@ -14,6 +14,7 @@ Integrantes: Juan Camilo Moreno, Marshall Robinson y Carlos Palacios.
 | Documento técnico | [docs/DocumentoTecnico.md](docs/DocumentoTecnico.md) |
 | Modelo de datos | [docs/ModeloDeDatos.md](docs/ModeloDeDatos.md) |
 | Consultas y reportes (mongosh) | [docs/Consultas.md](docs/Consultas.md) |
+| Guía de sustentación y diagramas | [docs/sustentacion/00-Indice.md](docs/sustentacion/00-Indice.md) · [docs/diagramas/](docs/diagramas/) |
 
 ## Tecnologías
 
