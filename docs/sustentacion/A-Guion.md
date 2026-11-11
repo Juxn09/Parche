@@ -208,7 +208,7 @@ Después de cambiar el backend: correr las pruebas; si la regla cambió a propó
 | Validaciones y reglas de negocio | Pydantic, `Reservas.py`, `$jsonSchema`, índices | A3.1, A4.4 | ✅ |
 | Embedding y referencing justificados | `docs/ModeloDeDatos.md`, sección 3 | A3 | ✅ |
 | Consultas con valor (Aggregation) | 9 reportes en `Reportes.py` | A5 | ✅ |
-| Documentación de 14 puntos + enlaces | `docs/DocumentoTecnico.md` y su PDF | — | 🟡 Los 14 puntos están cubiertos (aprendizajes incluidos en la sección 12). Faltan evidencias: E6, un pipeline en Compass y los paneles de Render y Vercel |
+| Documentación de 14 puntos + enlaces | `docs/DocumentoTecnico.md` y su PDF | — | 🟡 Los 14 puntos están cubiertos (aprendizajes incluidos en la sección 12). Solo faltan las capturas de los paneles de Render y Vercel |
 | Tema distinto al Taller 3 | Reservas deportivas | Apertura | ✅ |
 | Trabajo en parejas | Somos tres | — | ⚠️ Confirmar con el profesor |
 | **Criterio:** diseño y modelo | Sección 3 | A3 | ✅ |

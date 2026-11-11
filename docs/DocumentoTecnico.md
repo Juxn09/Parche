@@ -291,7 +291,9 @@ Evidencias en la sección 10: mapa de calor del propietario (E8b), métricas del
 
 ![E12. "golaso" encuentra las canchas de El Golazo con Atlas Search](evidencias/E12-BusquedaGolaso.jpg)
 
-`[[CAPTURA: un pipeline ejecutado en mongosh / Compass]]`
+**E13. El reporte 7 ejecutado en vivo.** En Compass, conectado a Atlas, se corrió en mongosh el pipeline de zonas de `docs/Consultas.md` (`$match → $group → $sort → $limit`) para el periodo fijo del 14 de septiembre al 8 de noviembre de 2026. Resultado: Kennedy 156 reservas, Usaquén 124, Laureles 111, El Poblado 104. (La app usa las últimas 8 semanas desde hoy, por eso sus cifras pueden variar un poco.)
+
+![E13. Pipeline de zonas ejecutado en mongosh](evidencias/E13-PipelineCompass.png)
 
 ## 10. Evidencias
 
@@ -304,13 +306,14 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E3 | Índices de `reservas`, con `ux_cancha_franja_activa` | Texto abajo |
 | E4 | Índice de Atlas Search en estado READY | [Imagen E4](evidencias/E4-AtlasSearchReady.png) |
 | E5 | `.env` ignorado por Git | Texto abajo |
-| E6 | Reserva hecha desde la interfaz y su documento en Atlas | `[[CAPTURA: reserva confirmada + documento en Compass]]` |
+| E6 | Reserva hecha desde la interfaz y su documento en Atlas | [E6a](evidencias/E6a-ReservaElegida.png) · [E6b](evidencias/E6b-ReservaConfirmada.png) · [E6c](evidencias/E6c-DocumentoCompass.png) |
 | E7 | Reserva cruzada rechazada (409) | [Imagen E7](evidencias/E7-ReservaCruzada409.jpg) |
 | E8 | Panel del propietario: agenda y reportes | [E8a](evidencias/E8a-PanelPropietarioAgenda.jpg) · [E8b](evidencias/E8b-PanelPropietarioReportes.jpg) |
 | E9 | Panel del admin: aprobación de sede y métricas | [E9a](evidencias/E9a-PanelAdminSedes.jpg) · [E9b](evidencias/E9b-PanelAdminMetricas.jpg) |
 | E10 | API desplegada en Render (`/api/salud`) | [Imagen E10](evidencias/E10-RenderSalud.png) · panel de Render pendiente |
 | E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · panel de Vercel pendiente |
 | E12 | Búsqueda "golaso" con Atlas Search en la app publicada | [Imagen E12](evidencias/E12-BusquedaGolaso.jpg) (sección 9) |
+| E13 | Un pipeline de agregación ejecutado en mongosh (Compass) | [Imagen E13](evidencias/E13-PipelineCompass.png) (sección 9) |
 
 **E1. El cluster en Atlas.** Cluster `Parche`, plan gratuito (M0), AWS N. Virginia (us-east-1), MongoDB 8.0, réplica de 3 nodos y 1 índice de búsqueda; en Data Explorer, la base `parche` con sus 5 colecciones y un documento de `reservas`.
 
@@ -352,6 +355,14 @@ $ git ls-files | grep -c '\.env$'
 **E2. La base rechaza un documento inválido.** Desde la consola de Compass conectada a Atlas se intentó insertar un usuario sin los campos obligatorios, con un correo inválido y un rol que no existe. El servidor respondió `Document failed validation`: la regla `$jsonSchema` con `validationLevel: strict` actúa en la base, aunque nadie pase por la API.
 
 ![E2. $jsonSchema rechazando un documento](evidencias/E2-ValidacionRechaza.png)
+
+**E6. Una reserva de punta a punta.** El 11 de noviembre de 2026, con la cuenta de prueba de Santiago Suárez en la app publicada, se reservó la Cancha de tenis del Pádel Club Teusaquillo para el sábado 14 de noviembre de 8 a 9 p. m. (hora pico, $90.000, pago simulado con Nequi). La regleta marcó la hora elegida y, tras confirmar, la mostró como ocupada. En Compass, el documento guardado en `reservas` tiene `franjas: ["2026-11-14T20"]`, `precio_total: 90000` calculado por el servidor, `estado: "activa"` y las copias de la cancha y del usuario. Con ella, la colección pasó a 967 documentos.
+
+![E6a. Hora pico elegida en la regleta](evidencias/E6a-ReservaElegida.png)
+
+![E6b. Reserva confirmada](evidencias/E6b-ReservaConfirmada.png)
+
+![E6c. El documento de la reserva en Compass](evidencias/E6c-DocumentoCompass.png)
 
 **E7. Reserva cruzada rechazada.** Desde `/docs` se intentó reservar la Pista 2 del Pádel Club Chapinero el 11 de noviembre a las 3 p. m., hora que ya estaba reservada. La API respondió **409 "Ese horario ya está ocupado en esta cancha"**. En Atlas siguió habiendo una sola reserva en esa franja y 964 en total: el índice único impidió la escritura.
 
