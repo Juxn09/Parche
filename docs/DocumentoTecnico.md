@@ -311,7 +311,7 @@ Capturas tomadas el 10 de noviembre de 2026. Las de la interfaz usan los datos d
 | E8 | Panel del propietario: agenda y reportes | [E8a](evidencias/E8a-PanelPropietarioAgenda.jpg) · [E8b](evidencias/E8b-PanelPropietarioReportes.jpg) |
 | E9 | Panel del admin: aprobación de sede y métricas | [E9a](evidencias/E9a-PanelAdminSedes.jpg) · [E9b](evidencias/E9b-PanelAdminMetricas.jpg) |
 | E10 | API desplegada en Render (`/api/salud`) | [Imagen E10](evidencias/E10-RenderSalud.png) · [panel de Render (E14)](evidencias/E14-PanelRender.png) |
-| E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · panel de Vercel pendiente |
+| E11 | Interfaz desplegada en Vercel, abierta desde un celular | [Imagen E11](evidencias/E11-VercelCelular.jpg) · [panel de Vercel (E15)](evidencias/E15-PanelVercel.png) |
 | E12 | Búsqueda "golaso" con Atlas Search en la app publicada | [Imagen E12](evidencias/E12-BusquedaGolaso.jpg) (sección 9) |
 | E13 | Un pipeline de agregación ejecutado en mongosh (Compass) | [Imagen E13](evidencias/E13-PipelineCompass.png) (sección 9) |
 
@@ -389,6 +389,10 @@ $ git ls-files | grep -c '\.env$'
 **E14. Panel de Render.** Web Service `Parche` (Python 3, plan Free), conectado a `Juxn09/Parche`, rama `main`, estado **Live** en el commit `f0d0989`, con 3 despliegues correctos (el último por Auto-Deploy). El panel advierte que la instancia gratuita se suspende por inactividad y la primera petición puede tardar 50 segundos o más. `main` va más adelante solo con cambios de documentación: el backend desplegado es idéntico.
 
 ![E14. Panel de Render con el servicio Live](evidencias/E14-PanelRender.png)
+
+**E15. Panel de Vercel.** Proyecto `parche` (plan Hobby): cada commit genera un despliegue. Los de la rama `main` van a **Production** y los de `evolucion` quedan como **Preview**; todos en estado Ready, con compilaciones de 4 a 8 segundos. El despliegue de producción de la captura es el commit `a1189b3`.
+
+![E15. Despliegues de Vercel: producción desde main y vistas previas desde evolucion](evidencias/E15-PanelVercel.png)
 
 ## 11. Despliegue
 
